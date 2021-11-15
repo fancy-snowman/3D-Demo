@@ -1,12 +1,15 @@
 #pragma once
 
-#include <iostream>
 #include <Windows.h>
+#include <iostream>
 #include <assert.h>
+#include <vector>
+#include <map>
 
 #include <wrl/client.h> // ComPtr
 using Microsoft::WRL::ComPtr;
 
+#include <DirectXMath.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <d3dcompiler.h>
@@ -16,3 +19,4 @@ using Microsoft::WRL::ComPtr;
 #pragma comment(lib, "d3dcompiler")
 
 #define ASSERT_HR(hr) assert(SUCCEEDED(hr))
+#define ZERO_MEMORY(obj) ZeroMemory(&obj, sizeof(obj))  

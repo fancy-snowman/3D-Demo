@@ -152,10 +152,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="source\GPU.cpp" />
     <ClCompile Include="source\pch.cpp" />
+    <ClCompile Include="source\Scene.cpp" />
     <ClCompile Include="source\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\GPU.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\Scene.h" />
     <ClInclude Include="include\Window.h" />

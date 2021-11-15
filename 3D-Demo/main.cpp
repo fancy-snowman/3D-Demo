@@ -1,29 +1,18 @@
 #include "pch.h"
 #include "Window.h"
+#include "Scene.h"
 
 int main()
-{
-	ComPtr<ID3D11Device> device;
-	ComPtr<ID3D11DeviceContext> context;
+{	
+	Window window(800, 600);
+	Scene scene;
 
-	ASSERT_HR(D3D11CreateDevice(
-		NULL,
-		D3D_DRIVER_TYPE_HARDWARE,
-		NULL,
-		D3D11_CREATE_DEVICE_DEBUG,
-		NULL,
-		NULL,
-		D3D11_SDK_VERSION,
-		device.GetAddressOf(),
-		NULL,
-		context.GetAddressOf()
-	));
-	
-	Window window(device, 800, 600);
-
-	while (window.Update())
+	while (true)
 	{
-		std::cout << window.GetWidth() << " " << window.GetHeight() << std::endl;
+		window.Clear(0.2f, 0.3f, 0.4f);
+		window.Bind();
+		scene.Draw();
+		window.Update();
 	}
 
 	return 0;

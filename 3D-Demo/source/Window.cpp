@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Window.h"
+#include "GPU.h"
 
-Window::Window(ComPtr<ID3D11Device> device, UINT width, UINT height)
+Window::Window(UINT width, UINT height)
 {
 	const char CLASS_NAME[] = "WINDOW_CLASS";
 	WNDCLASS WindowClass = {};
@@ -41,35 +42,50 @@ Window::Window(ComPtr<ID3D11Device> device, UINT width, UINT height)
 
 	ShowWindow(m_nativeWindow, SW_SHOW);
 
-	{
-		DXGI_SWAP_CHAIN_DESC desc = { 0 };
-		desc.BufferDesc.Width = (UINT)width;
-		desc.BufferDesc.Height = (UINT)height;
-		desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc.SampleDesc.Count = 1;
-		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		desc.BufferCount = 2;
-		desc.OutputWindow = m_nativeWindow;
-		desc.Windowed = true;
-		desc.SwapEffect = DXGI_SWAP_EFFECT_SEQUENTIAL;
-		//desc.Flags;
+	DXGI_SWAP_CHAIN_DESC backBufferDesc = { 0 };
+	backBufferDesc.BufferDesc.Width = width;
+	backBufferDesc.BufferDesc.Height = height;
+	backBufferDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	backBufferDesc.SampleDesc.Count = 1;
+	backBufferDesc.SampleDesc.Quality = 0;
+	backBufferDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	backBufferDesc.BufferCount = 2;
+	backBufferDesc.OutputWindow = m_nativeWindow;
+	backBufferDesc.Windowed = true;
+	backBufferDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
-		ComPtr<IDXGIDevice> dxgi_device;
-		ComPtr<IDXGIAdapter> dxgi_adapter;
-		ComPtr<IDXGIFactory> dxgi_factory;
+	ComPtr<IDXGIDevice> dxgi_device;
+	ComPtr<IDXGIAdapter> dxgi_adapter;
+	ComPtr<IDXGIFactory> dxgi_factory;
 
-		// Query the underlying factory and use it to create a new swap chain.
-		device->QueryInterface(IID_PPV_ARGS(dxgi_device.GetAddressOf()));
-		dxgi_device->GetAdapter(dxgi_adapter.GetAddressOf());
-		dxgi_adapter->GetParent(IID_PPV_ARGS(dxgi_factory.GetAddressOf()));
+	// Query the underlying factory and use it to create a new swap chain.
+	GPU::Device()->QueryInterface(IID_PPV_ARGS(dxgi_device.GetAddressOf()));
+	dxgi_device->GetAdapter(dxgi_adapter.GetAddressOf());
+	dxgi_adapter->GetParent(IID_PPV_ARGS(dxgi_factory.GetAddressOf()));
+	ASSERT_HR(dxgi_factory->CreateSwapChain(GPU::Device().Get(), &backBufferDesc, m_swapChain.GetAddressOf()));
 
-		ASSERT_HR(dxgi_factory->CreateSwapChain(device.Get(), &desc, m_swapChain.GetAddressOf()));
-	}
+	m_swapChain->GetBuffer(0, IID_PPV_ARGS(m_backBuffer.GetAddressOf()));
+	ASSERT_HR(GPU::Device()->CreateRenderTargetView(m_backBuffer.Get(), NULL, m_backBufferRTV.GetAddressOf()));
 
-	{
-		m_swapChain->GetBuffer(0, IID_PPV_ARGS(m_backBuffer.GetAddressOf()));
-		ASSERT_HR(device->CreateRenderTargetView(m_backBuffer.Get(), NULL, m_backBufferView.GetAddressOf()));
-	}
+	D3D11_TEXTURE2D_DESC depthBufferDesc;
+	ZERO_MEMORY(depthBufferDesc);
+	depthBufferDesc.Width = width;
+	depthBufferDesc.Height = height;
+	depthBufferDesc.MipLevels = 1;
+	depthBufferDesc.ArraySize = 1;
+	depthBufferDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	depthBufferDesc.SampleDesc.Count = backBufferDesc.SampleDesc.Count;
+	depthBufferDesc.SampleDesc.Quality = backBufferDesc.SampleDesc.Quality;
+	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+	ASSERT_HR(GPU::Device()->CreateTexture2D(&depthBufferDesc, NULL, m_depthBuffer.GetAddressOf()));
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
+	ZERO_MEMORY(depthStencilViewDesc);
+	depthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	depthStencilViewDesc.Texture2D.MipSlice = 0;
+	ASSERT_HR(GPU::Device()->CreateDepthStencilView(m_depthBuffer.Get(), &depthStencilViewDesc, m_depthBufferDSV.GetAddressOf()));
 }
 
 Window::~Window()
@@ -91,9 +107,33 @@ UINT Window::GetHeight()
 	return rect.bottom - rect.top;
 }
 
+void Window::Clear(float red, float green, float blue, float alpha)
+{
+	const FLOAT clearColor[] = { red, green, blue, alpha };
+	GPU::Context()->ClearRenderTargetView(m_backBufferRTV.Get(), clearColor);
+	GPU::Context()->ClearDepthStencilView(m_depthBufferDSV.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0.f);
+}
+
+void Window::Bind(float top, float left, float bottom, float right)
+{
+	UINT width = GetWidth();
+	UINT height = GetHeight();
+
+	D3D11_VIEWPORT viewPort;
+	viewPort.TopLeftX = (UINT)(width * left);
+	viewPort.TopLeftY = (UINT)(height * top);
+	viewPort.Width = (UINT)(width * (right - left));
+	viewPort.Height = (UINT)(height * (bottom - top));
+	viewPort.MinDepth = 0.0f;
+	viewPort.MaxDepth = 1.0f;
+
+	GPU::Context()->RSSetViewports(1, &viewPort);
+	GPU::Context()->OMSetRenderTargets(1, m_backBufferRTV.GetAddressOf(), m_depthBufferDSV.Get());
+}
+
 bool Window::Update()
 {
-	if (!m_nativeWindow)
+	if (!m_nativeWindow || !IsWindow(m_nativeWindow))
 	{
 		return false;
 	}
