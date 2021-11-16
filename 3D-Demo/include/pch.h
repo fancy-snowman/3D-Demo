@@ -4,7 +4,7 @@
 #include <iostream>
 #include <assert.h>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 #include <wrl/client.h> // ComPtr
 using Microsoft::WRL::ComPtr;
@@ -17,6 +17,8 @@ using Microsoft::WRL::ComPtr;
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "d3dcompiler")
+
+#define ID int
 
 #define ASSERT_HR(hr) assert(SUCCEEDED(hr))
 #define ZERO_MEMORY(obj) ZeroMemory(&obj, sizeof(obj))  

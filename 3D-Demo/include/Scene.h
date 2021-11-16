@@ -9,13 +9,9 @@ struct RenderPass
 	D3D11_PRIMITIVE_TOPOLOGY Topology;
 };
 
-struct ObjectPrefab
+struct SceneObject
 {
-	ComPtr<ID3D11Buffer> VertexBuffer;
-	ComPtr<ID3D11Buffer> IndexBuffer;
-	UINT VertexOffset;
-	UINT VertexStride;
-	UINT IndexCount;
+	ID Mesh;
 };
 
 struct InstancedBufferChunk
@@ -35,13 +31,5 @@ public:
 
 private:
 
-	struct InstancedPrefab
-	{
-		ObjectPrefab Prefab;
-		std::vector<InstancedBufferChunk> InstancedBufferChunks;
-	};
-
-	std::vector<InstancedPrefab> m_instancedObjects;
-
-	RenderPass m_pass;
+	std::vector<SceneObject> m_objects;
 };

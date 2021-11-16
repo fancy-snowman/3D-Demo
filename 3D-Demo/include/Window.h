@@ -14,7 +14,8 @@ public:
 	void Clear(float red, float green, float blue, float alpha = 1.0f);
 	void Bind(float top = 0.0f, float left = 0.0f, float bottom = 1.0f, float right = 1.0f);
 
-	bool Update();
+	bool Process();
+	void Present();
 
 private:
 

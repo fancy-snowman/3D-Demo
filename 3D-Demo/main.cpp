@@ -7,12 +7,12 @@ int main()
 	Window window(800, 600);
 	Scene scene;
 
-	while (true)
+	while (window.Process())
 	{
 		window.Clear(0.2f, 0.3f, 0.4f);
 		window.Bind();
 		scene.Draw();
-		window.Update();
+		window.Present();
 	}
 
 	return 0;

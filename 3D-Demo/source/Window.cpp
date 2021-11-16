@@ -111,7 +111,7 @@ void Window::Clear(float red, float green, float blue, float alpha)
 {
 	const FLOAT clearColor[] = { red, green, blue, alpha };
 	GPU::Context()->ClearRenderTargetView(m_backBufferRTV.Get(), clearColor);
-	GPU::Context()->ClearDepthStencilView(m_depthBufferDSV.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0.f);
+	GPU::Context()->ClearDepthStencilView(m_depthBufferDSV.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
 void Window::Bind(float top, float left, float bottom, float right)
@@ -120,10 +120,10 @@ void Window::Bind(float top, float left, float bottom, float right)
 	UINT height = GetHeight();
 
 	D3D11_VIEWPORT viewPort;
-	viewPort.TopLeftX = (UINT)(width * left);
-	viewPort.TopLeftY = (UINT)(height * top);
-	viewPort.Width = (UINT)(width * (right - left));
-	viewPort.Height = (UINT)(height * (bottom - top));
+	viewPort.TopLeftX = (FLOAT)(width * left);
+	viewPort.TopLeftY = (FLOAT)(height * top);
+	viewPort.Width = (FLOAT)(width * (right - left));
+	viewPort.Height = (FLOAT)(height * (bottom - top));
 	viewPort.MinDepth = 0.0f;
 	viewPort.MaxDepth = 1.0f;
 
@@ -131,7 +131,7 @@ void Window::Bind(float top, float left, float bottom, float right)
 	GPU::Context()->OMSetRenderTargets(1, m_backBufferRTV.GetAddressOf(), m_depthBufferDSV.Get());
 }
 
-bool Window::Update()
+bool Window::Process()
 {
 	if (!m_nativeWindow || !IsWindow(m_nativeWindow))
 	{
@@ -144,6 +144,10 @@ bool Window::Update()
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
-	m_swapChain->Present(0, 0);
 	return true;
+}
+
+void Window::Present()
+{
+	m_swapChain->Present(0, 0);
 }
