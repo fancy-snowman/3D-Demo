@@ -1,5 +1,6 @@
 #pragma once
 #include "pch.h"
+#include "ResourceTypes.h"
 
 struct RenderPass
 {
@@ -30,6 +31,8 @@ public:
 	void Draw();
 
 private:
+
+	Camera m_camera;
 
 	std::vector<SceneObject> m_objects;
 };

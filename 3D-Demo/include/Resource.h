@@ -1,27 +1,5 @@
 #include "pch.h"
-
-struct Vertex
-{
-	DirectX::XMFLOAT3 position;
-	DirectX::XMFLOAT3 color;
-};
-
-struct Mesh
-{
-	struct Submesh
-	{
-		UINT IndexOffset = 0;
-		UINT IndexCount = 0;
-	};
-
-	D3D11_PRIMITIVE_TOPOLOGY Topology;
-	ComPtr<ID3D11Buffer> VertexBuffer;
-	ComPtr<ID3D11Buffer> IndexBuffer;
-	std::vector<Submesh> Submeshes;
-	UINT VertexOffset = 0;
-	UINT VertexStride = 0;
-	UINT IndexCount = 0;
-};
+#include "ResourceTypes.h"
 
 struct ShaderProgram
 {
@@ -30,6 +8,14 @@ struct ShaderProgram
 	ComPtr<ID3D11PixelShader> Pixel;
 
 	inline void Bind();
+};
+
+struct ConstantBuffer
+{
+	ComPtr<ID3D11Buffer> Buffer;
+	UINT ByteWidth;
+
+	inline void Upload(const void* memory, size_t size);
 };
 
 // Singleton
@@ -63,6 +49,12 @@ public:
 		return s_instance->BindDefaultShaderProgramInternal();
 	}
 
+	static inline void BindCamera(const Camera& camera)
+	{
+		if (!s_instance) { Initialize(); }
+		return s_instance->BindCameraInternal(camera);
+	}
+
 private:
 
 	static std::unique_ptr<Resource> s_instance;
@@ -86,6 +78,17 @@ private:
 	std::unordered_map<ID, std::shared_ptr<Mesh>> m_meshes;
 
 	ShaderProgram m_defaultShaderProgram;
+	ConstantBuffer m_cameraBuffer;
+
+private:
+
+	struct CameraBuffer
+	{
+		DirectX::XMFLOAT4X4 View;
+		DirectX::XMFLOAT4X4 Projection;
+		//DirectX::XMFLOAT3 Position;
+		//float Padding;
+	};
 
 private:
 
@@ -93,4 +96,6 @@ private:
 	bool GetMeshInternal(ID id, std::shared_ptr<const Mesh>& meshOut);
 
 	void BindDefaultShaderProgramInternal();
+
+	void BindCameraInternal(const Camera& camera);
 };

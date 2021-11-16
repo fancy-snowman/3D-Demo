@@ -41,6 +41,12 @@ PS_OUT main(PS_IN input)
 
 Scene::Scene()
 {
+	m_camera.Position = { 0.0f, 0.0f, -0.5f };
+	m_camera.Direction = { 0.0f, 0.0f, 1.0f };
+	m_camera.AspectRatio = 800.f / 600.f;
+	m_camera.NearZ = 0.1f;
+	m_camera.FarZ = 10.f;
+	m_camera.FOV = DirectX::XM_PI;
 
 	std::vector<Vertex> vertices = {
 		{ {-0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f} },
@@ -63,8 +69,10 @@ Scene::~Scene()
 
 void Scene::Draw()
 {
-	Resource::BindDefaultShaderProgram();
 	GPU::Context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	Resource::BindDefaultShaderProgram();
+	Resource::BindCamera(m_camera);
 
 	for (auto& o : m_objects)
 	{

@@ -162,6 +162,7 @@
     <ClInclude Include="include\GPU.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\Resource.h" />
+    <ClInclude Include="include\ResourceTypes.h" />
     <ClInclude Include="include\Scene.h" />
     <ClInclude Include="include\Window.h" />
   </ItemGroup>

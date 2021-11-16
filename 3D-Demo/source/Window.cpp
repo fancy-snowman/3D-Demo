@@ -107,6 +107,15 @@ UINT Window::GetHeight()
 	return rect.bottom - rect.top;
 }
 
+FLOAT Window::GetAspect()
+{
+	RECT rect;
+	GetWindowRect(m_nativeWindow, &rect);
+	FLOAT width = (FLOAT)rect.right - rect.left;
+	FLOAT height = (FLOAT)rect.bottom - rect.top;
+	return width / height;
+}
+
 void Window::Clear(float red, float green, float blue, float alpha)
 {
 	const FLOAT clearColor[] = { red, green, blue, alpha };

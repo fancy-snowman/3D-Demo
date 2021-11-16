@@ -50,5 +50,8 @@
     <ClInclude Include="include\Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\ResourceTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
