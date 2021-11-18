@@ -8,10 +8,21 @@ const std::string shaderHeaderSrc = R"(
 
 cbuffer CameraBuffer : register (b0)
 {
-	float4x4 View;
-	float4x4 Projection;
-	//float3 Position;
-	//float Padding;
+	struct
+	{
+		float4x4 View;
+		float4x4 Projection;
+		//float3 Position;
+		//float Padding;
+	} Camera;
+}
+
+cbuffer ObjectBuffer : register (b1)
+{
+	struct
+	{
+		float4x4 World;
+	} Object;
 }
 
 struct VS_IN
@@ -38,8 +49,9 @@ PS_IN main(VS_IN input)
 	PS_IN output;
 
 	output.position = float4(input.position, 1.0f);
-	output.position = mul(View, output.position);
-	output.position = mul(Projection, output.position);
+	output.position = mul(output.position, Object.World);
+	output.position = mul(output.position, Camera.View);
+	output.position = mul(output.position, Camera.Projection);
 
 	output.color = float4(input.color, 1.0f);
 
@@ -122,15 +134,15 @@ Resource::Resource() : m_IDCounter(1)
 	{
 		m_cameraBuffer.ByteWidth = sizeof(CameraBuffer);
 
-		D3D11_BUFFER_DESC cameraBufferDesc;
-		ZERO_MEMORY(cameraBufferDesc);
-		cameraBufferDesc.ByteWidth = m_cameraBuffer.ByteWidth;
-		cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-		cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		D3D11_BUFFER_DESC bufferDesc;
+		ZERO_MEMORY(bufferDesc);
+		bufferDesc.ByteWidth = m_cameraBuffer.ByteWidth;
+		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+		bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		//cameraBufferDesc.MiscFlags;
 		//cameraBufferDesc.StructureByteStride;
-		ASSERT_HR(GPU::Device()->CreateBuffer(&cameraBufferDesc, NULL, m_cameraBuffer.Buffer.GetAddressOf()));
+		ASSERT_HR(GPU::Device()->CreateBuffer(&bufferDesc, NULL, m_cameraBuffer.Buffer.GetAddressOf()));
 	}
 }
 
@@ -176,15 +188,87 @@ ID Resource::AddMeshInternal(const std::vector<Vertex>& vertices, const std::vec
 	return meshID;
 }
 
-bool Resource::GetMeshInternal(ID id, std::shared_ptr<const Mesh>& meshOut)
+bool Resource::GetMeshInternal(ID meshID, std::shared_ptr<const Mesh>& meshOut)
 {
-	if (m_meshes.count(id) == 0)
+	if (m_meshes.count(meshID) == 0)
 	{
 		return false;
 	}
 
-	meshOut = m_meshes[id];
+	meshOut = m_meshes[meshID];
 	return true;
+}
+
+ID Resource::CreateConstantBufferInternal(size_t size, const void* initData)
+{
+	ConstantBuffer buffer;
+
+	buffer.ByteWidth = ALIGN_TO(size, 16);
+
+	D3D11_BUFFER_DESC bufferDesc;
+	ZERO_MEMORY(bufferDesc);
+	bufferDesc.ByteWidth = buffer.ByteWidth;
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//cameraBufferDesc.MiscFlags;
+	//cameraBufferDesc.StructureByteStride;
+
+	if (initData)
+	{
+		D3D11_SUBRESOURCE_DATA data;
+		ZERO_MEMORY(data);
+		data.pSysMem = initData;
+		ASSERT_HR(GPU::Device()->CreateBuffer(&bufferDesc, &data, buffer.Buffer.GetAddressOf()));
+	}
+	else
+	{
+		ASSERT_HR(GPU::Device()->CreateBuffer(&bufferDesc, NULL, buffer.Buffer.GetAddressOf()));
+	}
+
+	ID bufferID = m_IDCounter++;
+	m_constantBuffers[bufferID] = buffer;
+
+	return bufferID;
+}
+
+void Resource::BindConstantBufferInternal(ID bufferID, ShaderStage stage, UINT slot)
+{
+	if (m_constantBuffers.count(bufferID) == 0)
+	{
+		return;
+	}
+	ConstantBuffer& buffer = m_constantBuffers[bufferID];
+
+	switch (stage)
+	{
+	case ShaderStage::Vertex:
+		GPU::Context()->VSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
+		break;
+	case ShaderStage::Hull:
+		GPU::Context()->HSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
+		break;
+	case ShaderStage::Domain:
+		GPU::Context()->DSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
+		break;
+	case ShaderStage::Geometry:
+		GPU::Context()->GSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
+		break;
+	case ShaderStage::Pixel:
+		GPU::Context()->PSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
+		break;
+	}
+}
+
+void Resource::UploadConstantBufferInternal(ID bufferID, const void* data, size_t size)
+{
+	if (m_constantBuffers.count(bufferID) == 0)
+	{
+		return;
+	}
+
+	ConstantBuffer& buffer = m_constantBuffers[bufferID];
+	buffer.Upload(data, size);
 }
 
 void Resource::BindDefaultShaderProgramInternal()
@@ -201,8 +285,15 @@ void Resource::BindCameraInternal(const Camera& camera)
 
 	XMVECTOR xmPosition = XMLoadFloat3(&camera.Position);
 	XMVECTOR xmDirection = XMLoadFloat3(&camera.Direction);
-
-	xmView = XMMatrixLookToLH(xmPosition, xmDirection, { 0.0f, 1.0f, 0.0f, 0.0f });
+	
+	if (camera.Target)
+	{
+		xmView = XMMatrixLookAtLH(xmPosition, xmDirection, { 0.0f, 1.0f, 0.0f, 0.0f });
+	}
+	else
+	{
+		xmView = XMMatrixLookToLH(xmPosition, xmDirection, { 0.0f, 1.0f, 0.0f, 0.0f });
+	}
 	xmProjection = XMMatrixPerspectiveFovLH(camera.FOV, camera.AspectRatio, camera.NearZ, camera.FarZ);
 
 	CameraBuffer buffer;

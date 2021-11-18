@@ -21,4 +21,6 @@ using Microsoft::WRL::ComPtr;
 #define ID int
 
 #define ASSERT_HR(hr) assert(SUCCEEDED(hr))
-#define ZERO_MEMORY(obj) ZeroMemory(&obj, sizeof(obj))  
+#define ZERO_MEMORY(obj) ZeroMemory(&obj, sizeof(obj))
+
+#define ALIGN_TO(value, align) (value + align-1) & ~(align-1)

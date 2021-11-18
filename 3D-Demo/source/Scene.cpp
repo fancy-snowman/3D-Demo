@@ -3,68 +3,57 @@
 #include "GPU.h"
 #include "Resource.h"
 
-const std::string shaderHeaderSrc = R"(
-struct VS_IN
-{
-	float3 position : POSITION;
-	float3 color : COLOR;
-};
-
-struct PS_IN
-{
-	float4 position : SV_POSITION;
-	float4 color : COLOR;
-};
-
-struct PS_OUT
-{
-	float4 color : SV_TARGET;
-};
-)";
-
-const std::string vertexShaderSrc = shaderHeaderSrc + R"(
-PS_IN main(VS_IN input)
-{
-	PS_IN output;
-	output.position = float4(input.position, 1.0f);
-	output.color = float4(input.color, 1.0f);
-	return output;
-})";
-
-const std::string pixelShaderSrc = shaderHeaderSrc + R"(
-PS_OUT main(PS_IN input)
-{
-	PS_OUT output;
-	output.color = input.color;
-	return output;
-})";
-
 Scene::Scene()
 {
-	m_camera.Position = { 0.0f, 0.0f, -0.5f };
-	m_camera.Direction = { 0.0f, 0.0f, 1.0f };
+	m_camera.Position = { 0.0f, 0.0f, -5.0f };
+	m_camera.Direction = { 0.0f, 0.0f, 0.0f };
 	m_camera.AspectRatio = 800.f / 600.f;
 	m_camera.NearZ = 0.1f;
-	m_camera.FarZ = 10.f;
-	m_camera.FOV = DirectX::XM_PI;
+	m_camera.FarZ = 15.f;
+	m_camera.FOV = DirectX::XM_PI / 2.f;
+	m_camera.Target = true;
 
 	std::vector<Vertex> vertices = {
-		{ {-0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f} },
-		{ {-0.5f,  0.5f,  0.0f}, {0.0f, 1.0f, 0.0f} },
-		{ { 0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f} },
-		{ { 0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f} },
+		{ {-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f} },
+		{ {-1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f} },
+		{ { 1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 1.0f} },
+		{ { 1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f} },
+
+		{ {-1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f} },
+		{ {-1.0f,  1.0f,  1.0f}, {0.0f, 1.0f, 0.0f} },
+		{ { 1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 1.0f} },
+		{ { 1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f} },
 	};	
 
 	std::vector<UINT> indices = {
-		0, 1, 2, 0, 2, 3
+		0, 1, 2, 0, 2, 3, // Front
+		3, 2, 6, 3, 6, 7, // Right
+		7, 6, 5, 7, 5, 4, // Back
+		4, 5, 1, 4, 1, 0, // Left
+		1, 5, 6, 1, 6, 2, // Top
+		3, 7, 4, 3, 4, 0, // Bottom
 	};
 
 	m_objects.push_back({ Resource::AddMesh(vertices, indices) });
+
+	m_objectBuffer = Resource::CreateConstantBuffer(sizeof(ObjectBuffer));
 }
 
 Scene::~Scene()
 {
 	//
+}
+
+void Scene::Update(float delta)
+{
+	elapsed += delta;
+
+	for (auto& o : m_objects)
+	{
+		o.Transform.Rotation.x = std::cosf(-elapsed) * 2.f;
+		o.Transform.Rotation.y = std::cosf(elapsed * 0.8f);
+		o.Transform.Rotation.z = 1.f - std::cosf(elapsed);
+	}
 }
 
 void Scene::Draw()
@@ -78,6 +67,10 @@ void Scene::Draw()
 	{
 		std::shared_ptr<const Mesh> mesh;
 		Resource::GetMesh(o.Mesh, mesh);
+
+		DirectX::XMFLOAT4X4 worldMatrix = o.Transform.GetMatrixTransposed();
+		Resource::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
+		Resource::BindConstantBuffer(m_objectBuffer, ShaderStage::Vertex, 1);
 
 		GPU::Context()->IASetVertexBuffers(0, 1, mesh->VertexBuffer.GetAddressOf(), &mesh->VertexStride, &mesh->VertexOffset);
 		GPU::Context()->IASetIndexBuffer(mesh->IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);

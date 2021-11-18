@@ -13,6 +13,7 @@ struct RenderPass
 struct SceneObject
 {
 	ID Mesh;
+	TransformInfo Transform;
 };
 
 struct InstancedBufferChunk
@@ -28,11 +29,24 @@ public:
 	Scene();
 	~Scene();
 
+	void Update(float delta);
+
 	void Draw();
 
 private:
 
+	float elapsed = 0;
+
+	ID m_objectBuffer;
+
 	Camera m_camera;
 
 	std::vector<SceneObject> m_objects;
+
+private:
+
+	struct ObjectBuffer
+	{
+		DirectX::XMFLOAT4X4 World;
+	};
 };

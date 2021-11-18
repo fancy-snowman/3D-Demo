@@ -11,6 +11,7 @@ int main()
 	{
 		window.Clear(0.2f, 0.3f, 0.4f);
 		window.Bind();
+		scene.Update(0.0005f);
 		scene.Draw();
 		window.Present();
 	}
