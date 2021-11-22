@@ -4,7 +4,12 @@
 struct Vertex
 {
 	DirectX::XMFLOAT3 Position;
-	DirectX::XMFLOAT3 Color;
+	DirectX::XMFLOAT3 Normal;
+	DirectX::XMFLOAT2 Texcoord;
+
+	Vertex() : Position({ 0.0f, 0.0f, 0.0f }), Normal({ 0.0f, 0.0f, 0.0f }), Texcoord({ 0.0f, 0.0f }) {}
+	Vertex(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 normal, DirectX::XMFLOAT2 texcoord) :
+		Position(position), Normal(normal), Texcoord(texcoord) {}
 };
 
 struct Mesh

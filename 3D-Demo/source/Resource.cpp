@@ -28,13 +28,15 @@ cbuffer ObjectBuffer : register (b1)
 struct VS_IN
 {
 	float3 position : POSITION;
-	float3 color : COLOR;
+	float3 normal : NORMAL;
+	float2 texcoord : TEXCOORD;
 };   
 
 struct PS_IN
 {
 	float4 position : SV_POSITION;
-	float4 color : COLOR;
+	float4 normal : NORMAL;
+	float2 texcoord : TEXCOORD;
 };
 
 struct PS_OUT
@@ -53,7 +55,12 @@ PS_IN main(VS_IN input)
 	output.position = mul(output.position, Camera.View);
 	output.position = mul(output.position, Camera.Projection);
 
-	output.color = float4(input.color, 1.0f);
+	output.normal = float4(input.normal, 0.0f);
+	output.normal = mul(output.normal, Object.World);
+	output.normal = mul(output.normal, Camera.View);
+	output.normal = mul(output.normal, Camera.Projection);
+
+	output.texcoord = input.texcoord;
 
 	return output;
 })";
@@ -62,7 +69,7 @@ const std::string defaultPixelShaderSrc = shaderHeaderSrc + R"(
 PS_OUT main(PS_IN input)
 {
 	PS_OUT output;
-	output.color = input.color;
+	output.color = input.normal;
 	return output;
 })";
 
@@ -124,7 +131,8 @@ Resource::Resource() : m_IDCounter(1)
 
 		D3D11_INPUT_ELEMENT_DESC inputElements[] = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 		const int elementCount = sizeof(inputElements) / sizeof(inputElements[0]);
 		ASSERT_HR(GPU::Device()->CreateInputLayout(inputElements, elementCount, vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), m_defaultShaderProgram.InputLayout.GetAddressOf()));
@@ -197,6 +205,96 @@ bool Resource::GetMeshInternal(ID meshID, std::shared_ptr<const Mesh>& meshOut)
 
 	meshOut = m_meshes[meshID];
 	return true;
+}
+
+ID Resource::LoadModelInternal(const std::string& filePath)
+{
+	std::ifstream file(filePath);
+	if (!file) return 0;
+
+	std::vector<DirectX::XMFLOAT3> positions;
+	std::vector<DirectX::XMFLOAT3> normals;
+	std::vector<DirectX::XMFLOAT2> texcoords;
+
+	std::vector<Vertex> vertices;
+	std::vector<UINT> indices;
+
+	std::string header;
+	while (std::getline(file, header))
+	{
+		std::stringstream stream(header);
+
+		stream >> header;
+
+		if (header == "v") // Position
+		{
+			DirectX::XMFLOAT3 position;
+			stream >> position.x >> position.y >> position.z;
+			positions.push_back(position);
+		}
+
+		else if (header == "vn") // Normal
+		{
+			DirectX::XMFLOAT3 normal;
+			stream >> normal.x >> normal.y >> normal.z;
+			normals.push_back(normal);
+		}
+
+		else if (header == "vt") // Texcoord
+		{
+			DirectX::XMFLOAT2 texcoord;
+			stream >> texcoord.x >> texcoord.y;
+			texcoords.push_back(texcoord);
+		}
+
+		else if (header == "vp") // Parameter space
+		{
+			std::cerr << "Uninplemented type 'vp' in .obj file" << std::endl;
+		}
+
+		else if (header == "f") // Face
+		{
+			UINT index;
+			char sep;
+			Vertex vertex;
+
+			for (int i = 0; i < 3; i++)
+			{
+				if (positions.size() && texcoords.size() == 0 && normals.size() == 0)
+				{
+					stream >> index;
+					vertex.Position = positions[index - 1];
+				}
+
+				else
+				{
+					if (positions.size())
+					{
+						stream >> index;
+						vertex.Position = positions[index - 1];
+					}
+					stream >> sep;
+					if (texcoords.size())
+					{
+						stream >> index;
+						vertex.Texcoord = texcoords[index - 1];
+					}
+					stream >> sep;
+					if (normals.size())
+					{
+						stream >> index;
+						vertex.Normal = normals[index - 1];
+					}
+				}
+
+				vertices.push_back(vertex);
+				indices.push_back((UINT)indices.size());
+			}
+		}
+	}
+	file.close();
+
+	return s_instance->AddMesh(vertices, indices);
 }
 
 ID Resource::CreateConstantBufferInternal(size_t size, const void* initData)

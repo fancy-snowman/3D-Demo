@@ -2,9 +2,12 @@
 
 #include <Windows.h>
 #include <iostream>
+#include <string>
+#include <sstream>
 #include <assert.h>
 #include <vector>
 #include <unordered_map>
+#include <fstream>
 
 #include <wrl/client.h> // ComPtr
 using Microsoft::WRL::ComPtr;

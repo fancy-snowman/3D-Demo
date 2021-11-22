@@ -54,6 +54,12 @@ public:
 		return s_instance->GetMeshInternal(meshID, meshOut);
 	}
 
+	static inline ID LoadModel(const std::string& filePath)
+	{
+		if (!s_instance) { Initialize(); }
+		return s_instance->LoadModelInternal(filePath);
+	}
+
 	static inline ID CreateConstantBuffer(size_t size, const void* initialData = nullptr)
 	{
 		if (!s_instance) { Initialize(); }
@@ -83,14 +89,6 @@ public:
 		if (!s_instance) { Initialize(); }
 		s_instance->BindCameraInternal(camera);
 	}
-
-	//static inline void (const TransformInfo& transform)
-	//{
-	//	if (!s_instance) { Initialize(); }
-	//	DirectX::XMFLOAT4X4 worldMatrix = transform.GetMatrixTransposed();
-	//	s_instance->m_objectBuffer.Upload(&worldMatrix, sizeof(worldMatrix));
-	//	//GPU::Context()->VSSetConstantBuffers(1, 1, s_instance->m_objectBuffer.Buffer.GetAddressOf());
-	//}
 
 private:
 
@@ -133,6 +131,8 @@ private:
 
 	ID AddMeshInternal(const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, const std::vector<Mesh::Submesh>& subMeshes);
 	bool GetMeshInternal(ID meshID, std::shared_ptr<const Mesh>& meshOut);
+
+	ID LoadModelInternal(const std::string& filePath);
 
 	ID CreateConstantBufferInternal(size_t size, const void* initData);
 	void BindConstantBufferInternal(ID bufferID, ShaderStage stage, UINT slot);
