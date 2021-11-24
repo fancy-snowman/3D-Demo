@@ -69,7 +69,16 @@ const std::string defaultPixelShaderSrc = shaderHeaderSrc + R"(
 PS_OUT main(PS_IN input)
 {
 	PS_OUT output;
-	output.color = input.normal;
+
+	float3 lightDir = float3(-3.f, -1.f, 1.f);
+	lightDir = normalize(lightDir); 
+
+	float lightFactor = dot(input.normal.xyz, lightDir * -1.f);
+	lightFactor = clamp(lightFactor, 0.2f, 1.0f);
+
+	float3 baseColor = float3(0.2f, 0.5f, 0.4f);
+
+	output.color = float4(baseColor * lightFactor, 1.0f);
 	return output;
 })";
 
@@ -258,15 +267,40 @@ ID Resource::LoadModelInternal(const std::string& filePath)
 			char sep;
 			Vertex vertex;
 
-			for (int i = 0; i < 3; i++)
+			// If only position is present in the file
+			if (positions.size() > 0 && texcoords.size() == 0 && normals.size() == 0)
 			{
-				if (positions.size() && texcoords.size() == 0 && normals.size() == 0)
+				for (int i = 0; i < 3; i++)
 				{
 					stream >> index;
 					vertex.Position = positions[index - 1];
+
+					vertices.push_back(vertex);
+					indices.push_back((UINT)indices.size());
 				}
 
-				else
+				size_t triangleStartIndex = vertices.size() - 3;
+
+				// Calculated normal
+				DirectX::XMVECTOR p0 = DirectX::XMLoadFloat3(&vertices[triangleStartIndex].Position);
+				DirectX::XMVECTOR p1 = DirectX::XMLoadFloat3(&vertices[triangleStartIndex + 1].Position);
+				DirectX::XMVECTOR p2 = DirectX::XMLoadFloat3(&vertices[triangleStartIndex + 2].Position);
+
+				DirectX::XMVECTOR v0 = DirectX::XMVectorSubtract(p1, p0);
+				DirectX::XMVECTOR v1 = DirectX::XMVectorSubtract(p2, p0);
+
+				DirectX::XMVECTOR xmNormal = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(v0, v1));
+				DirectX::XMFLOAT3 normal;
+				DirectX::XMStoreFloat3(&normal, xmNormal);
+
+				vertices[triangleStartIndex].Normal = normal;
+				vertices[triangleStartIndex + 1].Normal = normal;
+				vertices[triangleStartIndex + 2].Normal = normal;
+			}
+
+			else
+			{
+				for (int i = 0; i < 3; i++)
 				{
 					if (positions.size())
 					{
@@ -285,10 +319,10 @@ ID Resource::LoadModelInternal(const std::string& filePath)
 						stream >> index;
 						vertex.Normal = normals[index - 1];
 					}
-				}
 
-				vertices.push_back(vertex);
-				indices.push_back((UINT)indices.size());
+					vertices.push_back(vertex);
+					indices.push_back((UINT)indices.size());
+				}
 			}
 		}
 	}

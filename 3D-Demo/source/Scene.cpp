@@ -5,7 +5,7 @@
 
 Scene::Scene()
 {
-	m_camera.Position = { 0.0f, 0.0f, 5.0f };
+	m_camera.Position = { 0.0f, 0.0f, -5.0f };
 	m_camera.Direction = { 0.0f, 0.0f, 0.0f };
 	m_camera.AspectRatio = 800.f / 600.f;
 	m_camera.NearZ = 0.1f;
@@ -34,8 +34,8 @@ Scene::Scene()
 		3, 7, 4, 3, 4, 0, // Bottom
 	};
 
-	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj") });
-	m_objects.push_back({ Resource::LoadModel("models/bunny.obj")});
+	m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj") });
+	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj")});
 
 	m_objectBuffer = Resource::CreateConstantBuffer(sizeof(ObjectBuffer));
 }
@@ -56,6 +56,9 @@ void Scene::Update(float delta)
 
 	for (auto& o : m_objects)
 	{
+		float scale = 1.5f + std::cosf(elapsed * 0.8f) / 3.0f;
+		o.Transform.Scale = { scale, scale, scale };
+
 		o.Transform.Rotation.x = std::cosf(elapsed * 0.4f) * 1.3f;
 		o.Transform.Rotation.y = std::sinf(elapsed) * 1.5f;
 		o.Transform.Rotation.z = (1.f - std::cosf(elapsed)) * 1.1f;
