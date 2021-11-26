@@ -16,8 +16,13 @@ struct Mesh
 {
 	struct Submesh
 	{
+		std::string Name = "Unnamed";
 		UINT IndexOffset = 0;
 		UINT IndexCount = 0;
+
+		Submesh() {}
+		Submesh(UINT offset, UINT count = 0) : IndexOffset(offset), IndexCount(count) {}
+		Submesh(std::string name, UINT offset = 0, UINT count = 0) : Name(name), IndexOffset(offset), IndexCount(count) {}
 	};
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology;

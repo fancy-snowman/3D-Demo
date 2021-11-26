@@ -6,23 +6,29 @@ std::unique_ptr<Resource> Resource::s_instance;
 
 const std::string shaderHeaderSrc = R"(
 
-cbuffer CameraBuffer : register (b0)
-{
-	struct
-	{
-		float4x4 View;
-		float4x4 Projection;
-		//float3 Position;
-		//float Padding;
-	} Camera;
-}
-
-cbuffer ObjectBuffer : register (b1)
+cbuffer ObjectBuffer : register (b0)
 {
 	struct
 	{
 		float4x4 World;
 	} Object;
+}
+
+cbuffer MaterialBuffer : register (b1)
+{
+	struct
+	{
+		float4 Color;
+	} Material;
+}
+
+cbuffer CameraBuffer : register (b2)
+{
+	struct
+	{
+		float4x4 View;
+		float4x4 Projection;
+	} Camera;
 }
 
 struct VS_IN
@@ -79,6 +85,8 @@ PS_OUT main(PS_IN input)
 	float3 baseColor = float3(0.2f, 0.5f, 0.4f);
 
 	output.color = float4(baseColor * lightFactor, 1.0f);
+
+	output.color = Material.Color;
 	return output;
 })";
 
@@ -227,6 +235,7 @@ ID Resource::LoadModelInternal(const std::string& filePath)
 
 	std::vector<Vertex> vertices;
 	std::vector<UINT> indices;
+	std::vector<Mesh::Submesh> subMeshes;
 
 	std::string header;
 	while (std::getline(file, header))
@@ -325,8 +334,29 @@ ID Resource::LoadModelInternal(const std::string& filePath)
 				}
 			}
 		}
+
+		else if (header == "g") // New group / sub mesh
+		{
+			std::string name;
+			stream >> name;
+
+			subMeshes.emplace_back(name, indices.size());
+		}
 	}
 	file.close();
+
+	if (subMeshes.size() > 1)
+	{
+		size_t offset = indices.size();
+		for (int i = (int)subMeshes.size() - 1; i >= 0; i--)
+		{
+			size_t count = offset - subMeshes[i].IndexOffset;
+			subMeshes[i].IndexCount = count;
+			offset -= count;
+		}
+
+		return s_instance->AddMesh(vertices, indices, subMeshes);
+	}
 
 	return s_instance->AddMesh(vertices, indices);
 }
@@ -435,5 +465,5 @@ void Resource::BindCameraInternal(const Camera& camera)
 
 	m_cameraBuffer.Upload(&buffer.View, sizeof(buffer));
 	
-	GPU::Context()->VSSetConstantBuffers(0, 1, m_cameraBuffer.Buffer.GetAddressOf());
+	GPU::Context()->VSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
 }

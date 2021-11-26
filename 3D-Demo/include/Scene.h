@@ -38,6 +38,7 @@ private:
 	float elapsed = 0;
 
 	ID m_objectBuffer;
+	ID m_materialBuffer;
 
 	Camera m_camera;
 
@@ -48,5 +49,10 @@ private:
 	struct ObjectBuffer
 	{
 		DirectX::XMFLOAT4X4 World;
+	};
+
+	struct MaterialBuffer
+	{
+		DirectX::XMFLOAT4 Color;
 	};
 };

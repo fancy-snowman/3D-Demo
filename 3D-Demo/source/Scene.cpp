@@ -38,6 +38,7 @@ Scene::Scene()
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj")});
 
 	m_objectBuffer = Resource::CreateConstantBuffer(sizeof(ObjectBuffer));
+	m_materialBuffer = Resource::CreateConstantBuffer(sizeof(MaterialBuffer));
 }
 
 Scene::~Scene()
@@ -79,13 +80,22 @@ void Scene::Draw()
 
 		DirectX::XMFLOAT4X4 worldMatrix = o.Transform.GetMatrixTransposed();
 		Resource::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
-		Resource::BindConstantBuffer(m_objectBuffer, ShaderStage::Vertex, 1);
+		Resource::BindConstantBuffer(m_objectBuffer, ShaderStage::Vertex, 0);
 
 		GPU::Context()->IASetVertexBuffers(0, 1, mesh->VertexBuffer.GetAddressOf(), &mesh->VertexStride, &mesh->VertexOffset);
 		GPU::Context()->IASetIndexBuffer(mesh->IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-		for (auto& sm : mesh->Submeshes)
+		//for (auto& sm : mesh->Submeshes)
+		for (int i = 0; i < (int)mesh->Submeshes.size(); i++)
 		{
+			auto& sm = mesh->Submeshes[i];
+
+			float increments = 0.5f / (float)mesh->Submeshes.size();
+			DirectX::XMFLOAT4 color = { 0.5f + increments * i, 0.3f, 0.2f, 1.0f };
+
+			Resource::UploadConstantBuffer(m_materialBuffer, &color, sizeof(color));
+			Resource::BindConstantBuffer(m_materialBuffer, ShaderStage::Pixel, 1);
+
 			GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
 		}
 	}

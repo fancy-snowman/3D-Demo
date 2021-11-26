@@ -1,6 +1,6 @@
 # OBJ file created by ply_to_obj.c
 #
-g Object001
+
 
 v  0  -0.525731  0.850651
 v  0.850651  0  0.525731
@@ -15,23 +15,62 @@ v  0  -0.525731  -0.850651
 v  0  0.525731  -0.850651
 v  0  0.525731  0.850651
 
+g Face001
 f  2  3  7
+
+g Face002
 f  2  8  3
+
+g Face003
 f  4  5  6
+
+g Face004
 f  5  4  9
+
+g Face005
 f  7  6  12
+
+g Face006
 f  6  7  11
+
+g Face007
 f  10  11  3
+
+g Face008
 f  11  10  4
+
+g Face009
 f  8  9  10
+
+g Face010
 f  9  8  1
+
+g Face011
 f  12  1  2
+
+g Face012
 f  1  12  5
+
+g Face013
 f  7  3  11
+
+g Face014
 f  2  7  12
+
+g Face015
 f  4  6  11
+
+g Face016
 f  6  5  12
+
+g Face017
 f  3  8  10
+
+g Face018
 f  8  2  1
+
+g Face019
 f  4  10  9
+
+g Face020
 f  5  9  1
