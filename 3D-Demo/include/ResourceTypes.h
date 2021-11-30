@@ -34,6 +34,39 @@ struct Mesh
 	UINT IndexCount = 0;
 };
 
+/*
+	Material properties based on Paul Bourke
+	http://paulbourke.net/dataformats/mtl/
+*/
+struct Material
+{
+	struct MaterialData
+	{
+		DirectX::XMFLOAT3 Diffuse;
+		int DiffuseMapIndex;
+		DirectX::XMFLOAT3 Specular;
+		int SpecularMapIndex;
+		DirectX::XMFLOAT3 Ambient;
+		int AmbientMapIndex;
+
+		DirectX::XMFLOAT4 Padding;
+
+		MaterialData() :
+			Diffuse({ 0.5f, 0.5f, 0.5f }),
+			DiffuseMapIndex(-1),
+			Specular({ 0.8f, 0.8f, 0.8f }),
+			SpecularMapIndex(-1),
+			Ambient({ 0.2f, 0.2f, 0.2f }),
+			AmbientMapIndex(-1),
+			Padding({ 0.0f, 0.0f, 0.0f, 0.0f }) {}
+	};
+
+	MaterialData Data;
+	std::string Name;
+
+	Material(const std::string& name) : Name(name) {}
+};
+
 struct TransformInfo
 {
 	DirectX::XMFLOAT3 Position;

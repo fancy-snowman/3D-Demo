@@ -48,10 +48,22 @@ public:
 		return s_instance->AddMeshInternal(vertices, indices, subMeshes);
 	}
 
-	static inline bool GetMesh(ID meshID, std::shared_ptr<const Mesh>& meshOut)
+	static inline std::shared_ptr<const Mesh> GetMesh(ID meshID)
 	{
 		if (!s_instance) { Initialize(); }
-		return s_instance->GetMeshInternal(meshID, meshOut);
+		return s_instance->GetMeshInternal(meshID);
+	}
+
+	static inline ID AddMaterial(const Material& material)
+	{
+		if (!s_instance) { Initialize(); }
+		return s_instance->AddMaterialInternal(material);
+	}
+
+	static inline std::shared_ptr<const Material> GetMaterial(ID materialID)
+	{
+		if (!s_instance) { Initialize(); }
+		return s_instance->GetMaterialInternal(materialID);
 	}
 
 	static inline ID LoadModel(const std::string& filePath)
@@ -111,6 +123,8 @@ private:
 	ID m_IDCounter;
 
 	std::unordered_map<ID, std::shared_ptr<Mesh>> m_meshes;
+	std::unordered_map<ID, std::shared_ptr<Material>> m_materials;
+	std::unordered_map<std::string, ID> m_materialNames;
 	std::unordered_map<ID, ConstantBuffer> m_constantBuffers;
 
 	ShaderProgram m_defaultShaderProgram;
@@ -130,7 +144,10 @@ private:
 private:
 
 	ID AddMeshInternal(const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, const std::vector<Mesh::Submesh>& subMeshes);
-	bool GetMeshInternal(ID meshID, std::shared_ptr<const Mesh>& meshOut);
+	std::shared_ptr<const Mesh> GetMeshInternal(ID meshID);
+
+	ID AddMaterialInternal(const Material& material);
+	std::shared_ptr<const Material> GetMaterialInternal(ID materialID);
 
 	ID LoadModelInternal(const std::string& filePath);
 
@@ -141,4 +158,8 @@ private:
 	void BindDefaultShaderProgramInternal();
 
 	void BindCameraInternal(const Camera& camera);
+
+private:
+
+	ID LoadMaterialInternal(const std::string& filePath);
 };

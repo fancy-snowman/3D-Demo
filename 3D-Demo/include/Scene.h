@@ -13,6 +13,7 @@ struct RenderPass
 struct SceneObject
 {
 	ID Mesh;
+	ID Material;
 	TransformInfo Transform;
 };
 
@@ -49,10 +50,5 @@ private:
 	struct ObjectBuffer
 	{
 		DirectX::XMFLOAT4X4 World;
-	};
-
-	struct MaterialBuffer
-	{
-		DirectX::XMFLOAT4 Color;
 	};
 };

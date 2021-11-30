@@ -6,12 +6,12 @@
 Scene::Scene()
 {
 	m_camera.Position = { 0.0f, 0.0f, -5.0f };
-	m_camera.Direction = { 0.0f, 0.0f, 0.0f };
+	m_camera.Direction = { 0.0f, 0.0f, 1.0f };
 	m_camera.AspectRatio = 800.f / 600.f;
 	m_camera.NearZ = 0.1f;
 	m_camera.FarZ = 15.f;
 	m_camera.FOV = DirectX::XM_PI / 2.f;
-	m_camera.Target = true;
+	m_camera.Target = false;
 
 	std::vector<Vertex> vertices = {
 		{ {-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, { 0.0f, 0.0f} },
@@ -34,11 +34,17 @@ Scene::Scene()
 		3, 7, 4, 3, 4, 0, // Bottom
 	};
 
-	m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj") });
+
+	Material material("Default material");
+	material.Data.Diffuse = { 0.8f, 0.1f, 0.3f };
+	material.Data.Ambient = { 0.1f, 0.1f, 0.1f };
+	material.Data.Specular = { 0.9f, 0.8f, 0.8f };
+
+	m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj")});
 
 	m_objectBuffer = Resource::CreateConstantBuffer(sizeof(ObjectBuffer));
-	m_materialBuffer = Resource::CreateConstantBuffer(sizeof(MaterialBuffer));
+	m_materialBuffer = Resource::CreateConstantBuffer(sizeof(Material::MaterialData));
 }
 
 Scene::~Scene()
@@ -75,8 +81,8 @@ void Scene::Draw()
 
 	for (auto& o : m_objects)
 	{
-		std::shared_ptr<const Mesh> mesh;
-		Resource::GetMesh(o.Mesh, mesh);
+		auto mesh = Resource::GetMesh(o.Mesh);
+		auto material = Resource::GetMaterial(o.Material);
 
 		DirectX::XMFLOAT4X4 worldMatrix = o.Transform.GetMatrixTransposed();
 		Resource::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
@@ -90,10 +96,7 @@ void Scene::Draw()
 		{
 			auto& sm = mesh->Submeshes[i];
 
-			float increments = 0.5f / (float)mesh->Submeshes.size();
-			DirectX::XMFLOAT4 color = { 0.5f + increments * i, 0.3f, 0.2f, 1.0f };
-
-			Resource::UploadConstantBuffer(m_materialBuffer, &color, sizeof(color));
+			Resource::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
 			Resource::BindConstantBuffer(m_materialBuffer, ShaderStage::Pixel, 1);
 
 			GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);

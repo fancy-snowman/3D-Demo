@@ -6,6 +6,14 @@ std::unique_ptr<Resource> Resource::s_instance;
 
 const std::string shaderHeaderSrc = R"(
 
+struct PointLight
+{
+	float3 Position;
+	float Radius;
+	float3 Color;
+	float Padding;
+};
+
 cbuffer ObjectBuffer : register (b0)
 {
 	struct
@@ -18,7 +26,13 @@ cbuffer MaterialBuffer : register (b1)
 {
 	struct
 	{
-		float4 Color;
+		float3 Diffuse;
+		int DiffuseMapIndex;
+		float3 Specular;
+		int SpecularMapIndex;
+		float3 Ambient;
+		int AmbientMapIndex;
+		float4 Padding;
 	} Material;
 }
 
@@ -33,21 +47,22 @@ cbuffer CameraBuffer : register (b2)
 
 struct VS_IN
 {
-	float3 position : POSITION;
-	float3 normal : NORMAL;
-	float2 texcoord : TEXCOORD;
+	float3 Position : POSITION;
+	float3 Normal : NORMAL;
+	float2 Texcoord : TEXCOORD;
 };   
 
 struct PS_IN
 {
-	float4 position : SV_POSITION;
-	float4 normal : NORMAL;
-	float2 texcoord : TEXCOORD;
+	float4 NDC : SV_POSITION;
+	float3 Position : POSITION;
+	float3 Normal : NORMAL;
+	float2 Texcoord : TEXCOORD;
 };
 
 struct PS_OUT
 {
-	float4 color : SV_TARGET;
+	float4 Color : SV_TARGET;
 };
 )";
 
@@ -56,17 +71,18 @@ PS_IN main(VS_IN input)
 {
 	PS_IN output;
 
-	output.position = float4(input.position, 1.0f);
-	output.position = mul(output.position, Object.World);
-	output.position = mul(output.position, Camera.View);
-	output.position = mul(output.position, Camera.Projection);
+	float4 position = float4(input.Position, 1.0f);
+	position = mul(position, Object.World);
+	output.Position = position;
+	position = mul(position, Camera.View);
+	position = mul(position, Camera.Projection);
+	output.NDC = position;
 
-	output.normal = float4(input.normal, 0.0f);
-	output.normal = mul(output.normal, Object.World);
-	output.normal = mul(output.normal, Camera.View);
-	output.normal = mul(output.normal, Camera.Projection);
+	float4 normal = float4(input.Normal, 0.0f);
+	normal = mul(normal, Object.World);
+	output.Normal = normal.xyz;
 
-	output.texcoord = input.texcoord;
+	output.Texcoord = input.Texcoord;
 
 	return output;
 })";
@@ -76,17 +92,24 @@ PS_OUT main(PS_IN input)
 {
 	PS_OUT output;
 
-	float3 lightDir = float3(-3.f, -1.f, 1.f);
-	lightDir = normalize(lightDir); 
+	PointLight light;
+	light.Position = float3(50.0f, 20.0f, -20.0f);
+	light.Color = float3(1.0f, 1.0f, 1.0f);
 
-	float lightFactor = dot(input.normal.xyz, lightDir * -1.f);
-	lightFactor = clamp(lightFactor, 0.2f, 1.0f);
+	float3 lightDir = normalize(light.Position - input.Position);
+	float3 lightReflect = normalize(reflect(lightDir * -1.0f, input.Normal));
+	float3 eyeDir = normalize(float3(0.0f, 0.0f, -5.0f) - input.Position);
 
-	float3 baseColor = float3(0.2f, 0.5f, 0.4f);
+	float3 ambientComponent = Material.Ambient;
+	float3 diffuseComponent = Material.Diffuse * max(0.0f, dot(lightDir, input.Normal));
+	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), 2);
 
-	output.color = float4(baseColor * lightFactor, 1.0f);
+	float3 final = float3(0.0f, 0.0f, 0.0f);
+	final += ambientComponent;
+	final += diffuseComponent;
+	final += specularComponent;
 
-	output.color = Material.Color;
+	output.Color = float4(final, 1.0f);
 	return output;
 })";
 
@@ -213,15 +236,37 @@ ID Resource::AddMeshInternal(const std::vector<Vertex>& vertices, const std::vec
 	return meshID;
 }
 
-bool Resource::GetMeshInternal(ID meshID, std::shared_ptr<const Mesh>& meshOut)
+std::shared_ptr<const Mesh> Resource::GetMeshInternal(ID meshID)
 {
 	if (m_meshes.count(meshID) == 0)
 	{
-		return false;
+		return std::shared_ptr<const Mesh>();
 	}
 
-	meshOut = m_meshes[meshID];
-	return true;
+	return m_meshes[meshID];
+}
+
+ID Resource::AddMaterialInternal(const Material& material)
+{
+	if (m_materialNames.count(material.Name) > 0) {
+		return m_materialNames[material.Name];
+	}
+
+	ID materialID = m_IDCounter++;
+	m_materials[materialID] = std::make_shared<Material>(material);
+	m_materialNames[material.Name] = materialID;
+
+	return materialID;
+}
+
+std::shared_ptr<const Material> Resource::GetMaterialInternal(ID materialID)
+{
+	if (m_materials.count(materialID) == 0)
+	{
+		return std::shared_ptr<const Material>();
+	}
+	
+	return m_materials[materialID];
 }
 
 ID Resource::LoadModelInternal(const std::string& filePath)
@@ -466,4 +511,21 @@ void Resource::BindCameraInternal(const Camera& camera)
 	m_cameraBuffer.Upload(&buffer.View, sizeof(buffer));
 	
 	GPU::Context()->VSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
+}
+
+ID Resource::LoadMaterialInternal(const std::string& filePath)
+{
+	std::ifstream file(filePath);
+	if (!file) return 0;
+
+	std::string header;
+	while (std::getline(file, header))
+	{
+		std::stringstream stream(header);
+
+		stream >> header;
+
+	}
+
+	return 0;
 }
