@@ -40,8 +40,10 @@ private:
 
 	ID m_objectBuffer;
 	ID m_materialBuffer;
+	ID m_lightBuffer;
 
 	Camera m_camera;
+	PointLight m_pointLight;
 
 	std::vector<SceneObject> m_objects;
 

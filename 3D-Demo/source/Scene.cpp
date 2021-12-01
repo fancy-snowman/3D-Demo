@@ -37,14 +37,35 @@ Scene::Scene()
 
 	Material material("Default material");
 	material.Data.Diffuse = { 0.8f, 0.1f, 0.3f };
-	material.Data.Ambient = { 0.1f, 0.1f, 0.1f };
-	material.Data.Specular = { 0.9f, 0.8f, 0.8f };
+	material.Data.Ambient = { 0.2f, 0.1f, 0.1f };
+	material.Data.Specular = { 1.0f, 0.8f, 0.8f };
+	material.Data.SpecularExponent = 30;
 
 	m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
-	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj")});
+	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
 
 	m_objectBuffer = Resource::CreateConstantBuffer(sizeof(ObjectBuffer));
 	m_materialBuffer = Resource::CreateConstantBuffer(sizeof(Material::MaterialData));
+
+	m_pointLight.Position = { 50.f, 20.f, -20.f };
+	m_pointLight.Color = { 1.0f, 1.0f, 1.0f };
+	m_pointLight.Radius = 100.f;
+
+	m_lightBuffer = Resource::CreateConstantBuffer(sizeof(PointLight), &m_pointLight);
+
+	// ---
+
+	//{
+	//	ComPtr<ID3D11RasterizerState> rastState;
+
+	//	D3D11_RASTERIZER_DESC desc;
+	//	ZERO_MEMORY(desc);
+	//	desc.FillMode = D3D11_FILL_WIREFRAME;
+	//	desc.CullMode = D3D11_CULL_NONE;
+
+	//	GPU::Device()->CreateRasterizerState(&desc, rastState.GetAddressOf());
+	//	GPU::Context()->RSSetState(rastState.Get());
+	//}
 }
 
 Scene::~Scene()
@@ -54,7 +75,7 @@ Scene::~Scene()
 
 void Scene::Update(float delta)
 {
-	elapsed += delta;
+	elapsed += delta * 0.5f;
 
 	//if (elapsed >= DirectX::XM_2PI)
 	//{
@@ -70,6 +91,13 @@ void Scene::Update(float delta)
 		o.Transform.Rotation.y = std::sinf(elapsed) * 1.5f;
 		o.Transform.Rotation.z = (1.f - std::cosf(elapsed)) * 1.1f;
 	}
+
+	// Change to transform
+	{
+		DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&m_pointLight.Position);
+		pos = DirectX::XMVector3TransformCoord(pos, DirectX::XMMatrixRotationY(delta * 0.5f));
+		DirectX::XMStoreFloat3(&m_pointLight.Position, pos);
+	}
 }
 
 void Scene::Draw()
@@ -78,6 +106,9 @@ void Scene::Draw()
 
 	Resource::BindDefaultShaderProgram();
 	Resource::BindCamera(m_camera);
+
+	Resource::UploadConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
+	Resource::BindConstantBuffer(m_lightBuffer, ShaderStage::Pixel, 3);
 
 	for (auto& o : m_objects)
 	{
@@ -91,11 +122,8 @@ void Scene::Draw()
 		GPU::Context()->IASetVertexBuffers(0, 1, mesh->VertexBuffer.GetAddressOf(), &mesh->VertexStride, &mesh->VertexOffset);
 		GPU::Context()->IASetIndexBuffer(mesh->IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-		//for (auto& sm : mesh->Submeshes)
-		for (int i = 0; i < (int)mesh->Submeshes.size(); i++)
+		for (auto& sm : mesh->Submeshes)
 		{
-			auto& sm = mesh->Submeshes[i];
-
 			Resource::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
 			Resource::BindConstantBuffer(m_materialBuffer, ShaderStage::Pixel, 1);
 

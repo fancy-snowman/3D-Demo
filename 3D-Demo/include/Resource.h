@@ -137,8 +137,8 @@ private:
 	{
 		DirectX::XMFLOAT4X4 View;
 		DirectX::XMFLOAT4X4 Projection;
-		//DirectX::XMFLOAT3 Position;
-		//float Padding;
+		DirectX::XMFLOAT3 Position;
+		float Padding;
 	};
 
 private:

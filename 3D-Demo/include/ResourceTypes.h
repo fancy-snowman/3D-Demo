@@ -48,8 +48,9 @@ struct Material
 		int SpecularMapIndex;
 		DirectX::XMFLOAT3 Ambient;
 		int AmbientMapIndex;
+		int SpecularExponent;
 
-		DirectX::XMFLOAT4 Padding;
+		DirectX::XMFLOAT3 Padding;
 
 		MaterialData() :
 			Diffuse({ 0.5f, 0.5f, 0.5f }),
@@ -58,13 +59,22 @@ struct Material
 			SpecularMapIndex(-1),
 			Ambient({ 0.2f, 0.2f, 0.2f }),
 			AmbientMapIndex(-1),
-			Padding({ 0.0f, 0.0f, 0.0f, 0.0f }) {}
+			SpecularExponent(1),
+			Padding({ 0.0f, 0.0f, 0.0f }) {}
 	};
 
 	MaterialData Data;
 	std::string Name;
 
 	Material(const std::string& name) : Name(name) {}
+};
+
+struct PointLight
+{
+	DirectX::XMFLOAT3 Position;
+	float Radius;
+	DirectX::XMFLOAT3 Color;
+	float Padding;
 };
 
 struct TransformInfo

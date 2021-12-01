@@ -6,14 +6,6 @@ std::unique_ptr<Resource> Resource::s_instance;
 
 const std::string shaderHeaderSrc = R"(
 
-struct PointLight
-{
-	float3 Position;
-	float Radius;
-	float3 Color;
-	float Padding;
-};
-
 cbuffer ObjectBuffer : register (b0)
 {
 	struct
@@ -32,7 +24,8 @@ cbuffer MaterialBuffer : register (b1)
 		int SpecularMapIndex;
 		float3 Ambient;
 		int AmbientMapIndex;
-		float4 Padding;
+		int SpecularExponent;
+		float3 Padding;
 	} Material;
 }
 
@@ -42,7 +35,20 @@ cbuffer CameraBuffer : register (b2)
 	{
 		float4x4 View;
 		float4x4 Projection;
+		float3 Position;
+		float Padding;
 	} Camera;
+}
+
+cbuffer LightBuffer : register (b3)
+{
+	struct 
+	{
+		float3 Position;
+		float Radius;
+		float3 Color;
+		float Padding;
+	} Light;
 }
 
 struct VS_IN
@@ -92,17 +98,13 @@ PS_OUT main(PS_IN input)
 {
 	PS_OUT output;
 
-	PointLight light;
-	light.Position = float3(50.0f, 20.0f, -20.0f);
-	light.Color = float3(1.0f, 1.0f, 1.0f);
-
-	float3 lightDir = normalize(light.Position - input.Position);
+	float3 lightDir = normalize(Light.Position - input.Position);
 	float3 lightReflect = normalize(reflect(lightDir * -1.0f, input.Normal));
-	float3 eyeDir = normalize(float3(0.0f, 0.0f, -5.0f) - input.Position);
+	float3 eyeDir = normalize(Camera.Position - input.Position);
 
 	float3 ambientComponent = Material.Ambient;
 	float3 diffuseComponent = Material.Diffuse * max(0.0f, dot(lightDir, input.Normal));
-	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), 2);
+	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), Material.SpecularExponent);
 
 	float3 final = float3(0.0f, 0.0f, 0.0f);
 	final += ambientComponent;
@@ -506,11 +508,12 @@ void Resource::BindCameraInternal(const Camera& camera)
 	CameraBuffer buffer;
 	XMStoreFloat4x4(&buffer.View, XMMatrixTranspose(xmView));
 	XMStoreFloat4x4(&buffer.Projection, XMMatrixTranspose(xmProjection));
-	//buffer.Position = camera.Position;
+	buffer.Position = camera.Position;
 
-	m_cameraBuffer.Upload(&buffer.View, sizeof(buffer));
+	m_cameraBuffer.Upload(&buffer, sizeof(buffer));
 	
 	GPU::Context()->VSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
+	GPU::Context()->PSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
 }
 
 ID Resource::LoadMaterialInternal(const std::string& filePath)
