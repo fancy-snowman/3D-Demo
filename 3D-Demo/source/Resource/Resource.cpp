@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Resource.h"
-#include "GPU.h"
+#include "Platform/GPU.h"
+#include "Resource/Resource.h"
 
 std::unique_ptr<Resource> Resource::s_instance;
 

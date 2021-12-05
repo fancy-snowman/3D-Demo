@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "GPU.h"
+#include "Platform/GPU.h"
 
 std::unique_ptr<GPU> GPU::s_instance;
 

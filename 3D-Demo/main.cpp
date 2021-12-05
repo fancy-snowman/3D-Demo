@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Window.h"
-#include "Scene.h"
+#include "Platform/Window.h"
+#include "Scene/Scene.h"
 
 int main()
 {	

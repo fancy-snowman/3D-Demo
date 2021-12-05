@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "ResourceTypes.h"
+#include "Resource/ResourceTypes.h"
 
 enum class ShaderStage
 {

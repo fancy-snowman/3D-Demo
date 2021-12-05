@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "ResourceTypes.h"
+#include "Resource/ResourceTypes.h"
 
 struct RenderPass
 {

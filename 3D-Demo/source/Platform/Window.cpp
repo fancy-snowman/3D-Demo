@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Window.h"
-#include "GPU.h"
+#include "Platform/GPU.h"
+#include "Platform/Window.h"
 
 Window::Window(UINT width, UINT height)
 {
