@@ -1,10 +1,10 @@
 #include "pch.h"
-#include "Platform/Window.h"
+#include "Resource/Window.h"
 #include "Scene/Scene.h"
 
 int main()
 {	
-	Window window(800, 600);
+	Resource::Window window(800, 600);
 	Scene scene;
 
 	while (window.Process())

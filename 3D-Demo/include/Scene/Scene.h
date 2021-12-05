@@ -14,7 +14,7 @@ struct SceneObject
 {
 	ID Mesh;
 	ID Material;
-	TransformInfo Transform;
+	Resource::TransformInfo Transform;
 };
 
 struct InstancedBufferChunk
@@ -42,8 +42,8 @@ private:
 	ID m_materialBuffer;
 	ID m_lightBuffer;
 
-	Camera m_camera;
-	PointLight m_pointLight;
+	Resource::Camera m_camera;
+	Resource::PointLight m_pointLight;
 
 	std::vector<SceneObject> m_objects;
 

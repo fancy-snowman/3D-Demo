@@ -35,7 +35,7 @@ Scene::Scene()
 	//};
 
 
-	Material material("Default material");
+	Resource::Material material("Default material");
 	material.Data.Diffuse = { 0.8f, 0.1f, 0.3f };
 	material.Data.Ambient = { 0.2f, 0.1f, 0.1f };
 	material.Data.Specular = { 1.0f, 0.8f, 0.8f };
@@ -43,18 +43,18 @@ Scene::Scene()
 
 	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
-	m_objects.push_back({ Resource::LoadModel("models/mandalorian.obj"), Resource::AddMaterial(material) });
+	m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj"), Resource::ResourceManager::AddMaterial(material) });
 
 	m_objects.back().Transform.Scale = { 15.0f, 15.0f, 15.0f };
 
-	m_objectBuffer = Resource::CreateConstantBuffer(sizeof(ObjectBuffer));
-	m_materialBuffer = Resource::CreateConstantBuffer(sizeof(Material::MaterialData));
+	m_objectBuffer = Resource::Manager::CreateConstantBuffer(sizeof(ObjectBuffer));
+	m_materialBuffer = Resource::Manager::CreateConstantBuffer(sizeof(Resource::Material::MaterialData));
 
 	m_pointLight.Position = { -50.f, 20.f, 20.f };
 	m_pointLight.Color = { 1.0f, 1.0f, 1.0f };
 	m_pointLight.Radius = 100.f;
 
-	m_lightBuffer = Resource::CreateConstantBuffer(sizeof(PointLight), &m_pointLight);
+	m_lightBuffer = Resource::Manager::CreateConstantBuffer(sizeof(Resource::PointLight), &m_pointLight);
 
 	// ---
 
@@ -66,8 +66,8 @@ Scene::Scene()
 	//	desc.FillMode = D3D11_FILL_WIREFRAME;
 	//	desc.CullMode = D3D11_CULL_NONE;
 
-	//	GPU::Device()->CreateRasterizerState(&desc, rastState.GetAddressOf());
-	//	GPU::Context()->RSSetState(rastState.Get());
+	//	Platform::GPU::Device()->CreateRasterizerState(&desc, rastState.GetAddressOf());
+	//	Platform::GPU::Context()->RSSetState(rastState.Get());
 	//}
 }
 
@@ -108,32 +108,32 @@ void Scene::Update(float delta)
 
 void Scene::Draw()
 {
-	GPU::Context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	Platform::GPU::Context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	Resource::BindDefaultShaderProgram();
-	Resource::BindCamera(m_camera);
+	Resource::Manager::BindDefaultShaderProgram();
+	Resource::Manager::BindCamera(m_camera);
 
-	Resource::UploadConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
-	Resource::BindConstantBuffer(m_lightBuffer, ShaderStage::Pixel, 3);
+	Resource::Manager::UploadConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
+	Resource::Manager::BindConstantBuffer(m_lightBuffer, Resource::ShaderStage::Pixel, 3);
 
 	for (auto& o : m_objects)
 	{
-		auto mesh = Resource::GetMesh(o.Mesh);
-		auto material = Resource::GetMaterial(o.Material);
+		auto mesh = Resource::Manager::GetMesh(o.Mesh);
+		auto material = Resource::Manager::GetMaterial(o.Material);
 
 		DirectX::XMFLOAT4X4 worldMatrix = o.Transform.GetMatrixTransposed();
-		Resource::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
-		Resource::BindConstantBuffer(m_objectBuffer, ShaderStage::Vertex, 0);
+		Resource::Manager::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
+		Resource::Manager::BindConstantBuffer(m_objectBuffer, Resource::ShaderStage::Vertex, 0);
 
-		GPU::Context()->IASetVertexBuffers(0, 1, mesh->VertexBuffer.GetAddressOf(), &mesh->VertexStride, &mesh->VertexOffset);
-		GPU::Context()->IASetIndexBuffer(mesh->IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+		Platform::GPU::Context()->IASetVertexBuffers(0, 1, mesh->VertexBuffer.GetAddressOf(), &mesh->VertexStride, &mesh->VertexOffset);
+		Platform::GPU::Context()->IASetIndexBuffer(mesh->IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 		for (auto& sm : mesh->Submeshes)
 		{
-			Resource::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
-			Resource::BindConstantBuffer(m_materialBuffer, ShaderStage::Pixel, 1);
+			Resource::Manager::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
+			Resource::Manager::BindConstantBuffer(m_materialBuffer, Resource::ShaderStage::Pixel, 1);
 
-			GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
+			Platform::GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
 		}
 	}
 }
