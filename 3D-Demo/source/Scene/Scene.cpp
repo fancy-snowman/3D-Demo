@@ -36,10 +36,10 @@ Scene::Scene()
 
 
 	Resource::Material material("Default material");
-	material.Data.Diffuse = { 0.8f, 0.1f, 0.3f };
-	material.Data.Ambient = { 0.2f, 0.1f, 0.1f };
-	material.Data.Specular = { 1.0f, 0.8f, 0.8f };
-	material.Data.SpecularExponent = 128;
+	material.Data.Diffuse = { 0.768627f, 0.772549f, 0.768627f };
+	material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
+	material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
+	material.Data.SpecularExponent = 179.999996f;
 
 	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
@@ -108,8 +108,6 @@ void Scene::Update(float delta)
 
 void Scene::Draw()
 {
-	Platform::GPU::Context()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	Resource::Manager::BindDefaultShaderProgram();
 	Resource::Manager::BindCamera(m_camera);
 
@@ -125,8 +123,8 @@ void Scene::Draw()
 		Resource::Manager::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
 		Resource::Manager::BindConstantBuffer(m_objectBuffer, Resource::ShaderStage::Vertex, 0);
 
-		Platform::GPU::Context()->IASetVertexBuffers(0, 1, mesh->VertexBuffer.GetAddressOf(), &mesh->VertexStride, &mesh->VertexOffset);
-		Platform::GPU::Context()->IASetIndexBuffer(mesh->IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+		Resource::Manager::BindVertexBuffer(mesh->VertexBuffer);
+		Resource::Manager::BindIndexBuffer(mesh->IndexBuffer);
 
 		for (auto& sm : mesh->Submeshes)
 		{

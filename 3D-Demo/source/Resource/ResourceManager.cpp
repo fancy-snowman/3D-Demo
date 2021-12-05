@@ -98,15 +98,29 @@ PS_IN main(VS_IN input)
 	const std::string defaultPixelShaderSrc = shaderHeaderSrc + R"(
 PS_OUT main(PS_IN input)
 {
+	struct LightGeneral
+	{
+		float3 Ambient;
+	} lightGeneral;
+	lightGeneral.Ambient = float3(0.1f, 0.1f, 0.1f);
+
+	struct LightSpecific
+	{
+		float3 Diffuse;
+		float3 Specular;
+	} lightSpecific;
+	lightSpecific.Diffuse = float3(0.1f, 0.1f, 0.1f);
+	lightSpecific.Specular = float3(0.3f, 0.3f, 0.3f);
+
 	PS_OUT output;
 
 	float3 lightDir = normalize(Light.Position - input.Position);
 	float3 lightReflect = normalize(reflect(lightDir * -1.0f, input.Normal));
 	float3 eyeDir = normalize(Camera.Position - input.Position);
 
-	float3 ambientComponent = Material.Ambient;
-	float3 diffuseComponent = Material.Diffuse * max(0.0f, dot(lightDir, input.Normal));
-	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), Material.SpecularExponent);
+	float3 ambientComponent = Material.Ambient * lightGeneral.Ambient;
+	float3 diffuseComponent = Material.Diffuse * max(0.0f, dot(lightDir, input.Normal)) * lightSpecific.Diffuse;
+	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), Material.SpecularExponent) * lightSpecific.Specular;
 
 	float3 final = float3(0.0f, 0.0f, 0.0f);
 	final += ambientComponent;
@@ -187,32 +201,9 @@ PS_OUT main(PS_IN input)
 	ID ResourceManager::AddMeshInternal(const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, const std::vector<Mesh::Submesh>& subMeshes)
 	{
 		std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
-
-		D3D11_BUFFER_DESC vertexBufferDesc;
-		ZERO_MEMORY(vertexBufferDesc);
-		vertexBufferDesc.ByteWidth = (UINT)(sizeof(Vertex) * vertices.size());
-		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-		D3D11_SUBRESOURCE_DATA data;
-		ZERO_MEMORY(data);
-		data.pSysMem = vertices.data();
-
-		ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&vertexBufferDesc, &data, mesh->VertexBuffer.GetAddressOf()));
-		mesh->VertexOffset = 0;
-		mesh->VertexStride = sizeof(Vertex);
-
-		D3D11_BUFFER_DESC indexBufferDesc;
-		ZERO_MEMORY(indexBufferDesc);
-		indexBufferDesc.ByteWidth = (UINT)(sizeof(UINT) * indices.size());
-		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-		ZERO_MEMORY(data);
-		data.pSysMem = indices.data();
-
-		ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&indexBufferDesc, &data, mesh->IndexBuffer.GetAddressOf()));
-		mesh->IndexCount = (UINT)indices.size();
+		
+		mesh->VertexBuffer = CreateVertexBuffer(sizeof(Vertex), vertices.size(), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, vertices.data());
+		mesh->IndexBuffer = CreateIndexBuffer(indices.size(), DXGI_FORMAT_R32_UINT, indices.data());
 
 		mesh->Submeshes = subMeshes;
 
@@ -392,6 +383,55 @@ PS_OUT main(PS_IN input)
 		return s_instance->AddMesh(vertices, indices);
 	}
 
+	ID ResourceManager::CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
+	{
+		VertexBuffer buffer;
+		buffer.Topology = topology;
+		buffer.VertexStride = vertexStride;
+		buffer.VertexCount = vertexCount;
+
+		D3D11_BUFFER_DESC vertexBufferDesc;
+		ZERO_MEMORY(vertexBufferDesc);
+		vertexBufferDesc.ByteWidth = (UINT)(buffer.VertexStride * buffer.VertexCount);
+		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+		D3D11_SUBRESOURCE_DATA data;
+		ZERO_MEMORY(data);
+		data.pSysMem = initialData;
+
+		ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&vertexBufferDesc, &data, buffer.Buffer.GetAddressOf()));
+
+		ID bufferID = m_IDCounter++;
+		m_vertexBuffers[bufferID] = buffer;
+
+		return bufferID;
+	}
+
+	ID ResourceManager::CreateIndexBufferInternal(size_t indexCount, DXGI_FORMAT format, const void* initialData)
+	{
+		IndexBuffer buffer;
+		buffer.IndexCount = indexCount;
+		buffer.Format = format;
+
+		D3D11_BUFFER_DESC indexBufferDesc;
+		ZERO_MEMORY(indexBufferDesc);
+		indexBufferDesc.ByteWidth = (UINT)(sizeof(UINT) * buffer.IndexCount);
+		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+		D3D11_SUBRESOURCE_DATA data;
+		ZERO_MEMORY(data);
+		data.pSysMem = initialData;
+
+		ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&indexBufferDesc, &data, buffer.Buffer.GetAddressOf()));
+
+		ID meshID = m_IDCounter++;
+		m_indexBuffers[meshID] = buffer;
+
+		return meshID;
+	}
+
 	ID ResourceManager::CreateConstantBufferInternal(size_t size, const void* initData)
 	{
 		ConstantBuffer buffer;
@@ -404,8 +444,6 @@ PS_OUT main(PS_IN input)
 		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 		bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		//cameraBufferDesc.MiscFlags;
-		//cameraBufferDesc.StructureByteStride;
 
 		if (initData)
 		{
@@ -423,6 +461,29 @@ PS_OUT main(PS_IN input)
 		m_constantBuffers[bufferID] = buffer;
 
 		return bufferID;
+	}
+
+	void ResourceManager::BindVertexBufferInternal(ID bufferID, UINT offset, UINT slot)
+	{
+		if (m_vertexBuffers.count(bufferID) == 0)
+		{
+			return;
+		}
+		VertexBuffer& buffer = m_vertexBuffers[bufferID];
+
+		Platform::GPU::Context()->IASetPrimitiveTopology(buffer.Topology);
+		Platform::GPU::Context()->IASetVertexBuffers(slot, 1, buffer.Buffer.GetAddressOf(), &buffer.VertexStride, &offset);
+	}
+
+	void ResourceManager::BindIndexBufferInternal(ID bufferID, UINT offset)
+	{
+		if (m_indexBuffers.count(bufferID) == 0)
+		{
+			return;
+		}
+		IndexBuffer& buffer = m_indexBuffers[bufferID];
+
+		Platform::GPU::Context()->IASetIndexBuffer(buffer.Buffer.Get(), buffer.Format, offset);
 	}
 
 	void ResourceManager::BindConstantBufferInternal(ID bufferID, ShaderStage stage, UINT slot)

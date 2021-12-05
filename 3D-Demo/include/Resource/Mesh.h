@@ -27,12 +27,15 @@ namespace Resource
 			Submesh(std::string name, UINT offset = 0, UINT count = 0) : Name(name), IndexOffset(offset), IndexCount(count) {}
 		};
 
-		D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		ComPtr<ID3D11Buffer> VertexBuffer;
-		ComPtr<ID3D11Buffer> IndexBuffer;
+		ID VertexBuffer;
+		ID IndexBuffer;
 		std::vector<Submesh> Submeshes;
-		UINT VertexOffset = 0;
-		UINT VertexStride = 0;
-		UINT IndexCount = 0;
+
+		//D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		//ComPtr<ID3D11Buffer> VertexBuffer;
+		//ComPtr<ID3D11Buffer> IndexBuffer;
+		//UINT VertexOffset = 0;
+		//UINT VertexStride = 0;
+		//UINT IndexCount = 0;
 	};
 }
