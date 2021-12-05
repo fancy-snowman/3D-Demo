@@ -36,7 +36,27 @@ Scene::Scene()
 
 
 	Resource::Material material("Default material");
-	material.Data.Diffuse = { 0.768627f, 0.772549f, 0.768627f };
+
+	// newmtl Chrome
+	//material.Data.Diffuse = { 0.768627f, 0.772549f, 0.768627f };
+	//material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
+	//material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
+	//material.Data.SpecularExponent = 179.999996f;
+
+	// newmtl Glass_-_Heavy_Color
+	//material.Data.Diffuse = { 0.098039f, 0.098039f, 0.098039f };
+	//material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
+	//material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
+	//material.Data.SpecularExponent = 179.999996f;
+
+	// newmtl Plastic_-_Matte_(Black)
+	//material.Data.Diffuse = { 0.098039f, 0.098039f, 0.098039f };
+	//material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
+	//material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
+	//material.Data.SpecularExponent = 179.999996f;
+
+	// newmtl Steel_-_Satin
+	material.Data.Diffuse = { 0.627451f, 0.627451f, 0.627451f };
 	material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
 	material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
 	material.Data.SpecularExponent = 179.999996f;
