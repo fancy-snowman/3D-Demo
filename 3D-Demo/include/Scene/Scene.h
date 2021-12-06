@@ -13,7 +13,6 @@ struct RenderPass
 struct SceneObject
 {
 	ID Mesh;
-	ID Material;
 	Resource::TransformInfo Transform;
 };
 

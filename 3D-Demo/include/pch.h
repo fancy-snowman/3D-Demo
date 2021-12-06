@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <vector>
 #include <unordered_map>
+#include <map>
 #include <fstream>
 
 #include <wrl/client.h> // ComPtr

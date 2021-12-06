@@ -63,7 +63,7 @@ Scene::Scene()
 
 	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
-	m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj"), Resource::ResourceManager::AddMaterial(material) });
+	m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj") });
 
 	m_objects.back().Transform.Scale = { 15.0f, 15.0f, 15.0f };
 
@@ -137,7 +137,6 @@ void Scene::Draw()
 	for (auto& o : m_objects)
 	{
 		auto mesh = Resource::Manager::GetMesh(o.Mesh);
-		auto material = Resource::Manager::GetMaterial(o.Material);
 
 		DirectX::XMFLOAT4X4 worldMatrix = o.Transform.GetMatrixTransposed();
 		Resource::Manager::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
@@ -148,6 +147,7 @@ void Scene::Draw()
 
 		for (auto& sm : mesh->Submeshes)
 		{
+			auto material = Resource::Manager::GetMaterial(sm.Material);
 			Resource::Manager::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
 			Resource::Manager::BindConstantBuffer(m_materialBuffer, Resource::ShaderStage::Pixel, 1);
 

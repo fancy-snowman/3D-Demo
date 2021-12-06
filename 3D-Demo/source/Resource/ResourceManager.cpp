@@ -26,7 +26,7 @@ cbuffer MaterialBuffer : register (b1)
 		int SpecularMapIndex;
 		float3 Ambient;
 		int AmbientMapIndex;
-		int SpecularExponent;
+		float SpecularExponent;
 		float3 Padding;
 	} Material;
 }
@@ -246,6 +246,26 @@ PS_OUT main(PS_IN input)
 		return m_materials[materialID];
 	}
 
+	std::string ResourceManager::GetMaterialNameInternal(ID materialID)
+	{
+		if (m_materials.count(materialID) == 0)
+		{
+			return "";
+		}
+
+		return m_materials[materialID]->Name;
+	}
+
+	ID ResourceManager::GetMaterialIDInternal(std::string materialName)
+	{
+		if (m_materialNames.count(materialName) == 0)
+		{
+			return 0;
+		}
+
+		return m_materialNames[materialName];
+	}
+
 	ID ResourceManager::LoadModelInternal(const std::string& filePath)
 	{
 		std::ifstream file(filePath);
@@ -364,6 +384,32 @@ PS_OUT main(PS_IN input)
 
 				subMeshes.emplace_back(name, indices.size());
 			}
+
+			else if (header == "usemtl")
+			{
+				// May need to change how submeshes are added
+				// "usemtl" might not be a guarantee to be after "g"
+				std::string name;
+				stream >> name;
+				ID materialID = GetMaterialID(name);
+				subMeshes.back().Material = materialID;
+			}
+
+			else if (header == "mtllib")
+			{
+				std::string fileName;
+				stream >> fileName;
+
+				// Find the file in the same directory as the .obj-file
+				std::string directory;
+				auto lastDiv = filePath.rfind("/");
+				if (lastDiv != std::string::npos)
+				{
+					directory = filePath.substr(0, lastDiv + 1);
+				}
+
+				LoadMaterial(directory + fileName);
+			}
 		}
 		file.close();
 
@@ -381,6 +427,79 @@ PS_OUT main(PS_IN input)
 		}
 
 		return s_instance->AddMesh(vertices, indices);
+	}
+
+	std::vector<ID> ResourceManager::LoadMaterialInternal(const std::string& filePath)
+	{
+		std::vector<ID> newMaterials;
+
+		std::ifstream file(filePath);
+		if (!file) return newMaterials;
+
+		std::string header;
+		
+		std::string name;
+		DirectX::XMFLOAT3 diffuse = { 1.0f, 1.0f, 1.0f }; // Kd
+		DirectX::XMFLOAT3 specular = { 1.0f, 1.0f, 1.0f }; // Ks
+		DirectX::XMFLOAT3 ambient = { 1.0f, 1.0f, 1.0f }; // Ka
+		float specularExponent = 1; // Ns
+
+		while (std::getline(file, header))
+		{
+			std::stringstream stream(header);
+
+			stream >> header;
+			if (header == "newmtl")
+			{
+				if (name != "") // If not first name in file
+				{
+					Material material(name);
+					material.Data.Diffuse = diffuse;
+					material.Data.Specular = specular;
+					material.Data.Ambient = ambient;
+					material.Data.SpecularExponent = specularExponent;
+					
+					ID materialID = AddMaterial(material);
+					newMaterials.push_back(materialID);
+				}
+
+				stream >> name;
+				diffuse = { 1.0f, 1.0f, 1.0f };
+				specular = { 1.0f, 1.0f, 1.0f };
+				ambient = { 1.0f, 1.0f, 1.0f };
+				specularExponent = 1.0f;
+			}
+			else if (header == "Kd") // Diffuse
+			{
+				stream >> diffuse.x >> diffuse.y >> diffuse.z;
+			}
+			else if (header == "Ks") // Specular
+			{
+				stream >> specular.x >> specular.y >> specular.z;
+			}
+			else if (header == "Ka") // Ambient
+			{
+				stream >> ambient.x >> ambient.y >> ambient.z;
+			}
+			else if (header == "Ns") // Specular exponent
+			{
+				stream >> specularExponent;
+			}
+		}
+
+		// Add the last material in the file
+		{
+			Material material(name);
+			material.Data.Diffuse = diffuse;
+			material.Data.Specular = specular;
+			material.Data.Ambient = ambient;
+			material.Data.SpecularExponent = specularExponent;
+
+			ID materialID = AddMaterial(material);
+			newMaterials.push_back(materialID);
+		}
+
+		return newMaterials;
 	}
 
 	ID ResourceManager::CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
@@ -559,22 +678,5 @@ PS_OUT main(PS_IN input)
 
 		Platform::GPU::Context()->VSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
 		Platform::GPU::Context()->PSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
-	}
-
-	ID ResourceManager::LoadMaterialInternal(const std::string& filePath)
-	{
-		std::ifstream file(filePath);
-		if (!file) return 0;
-
-		std::string header;
-		while (std::getline(file, header))
-		{
-			std::stringstream stream(header);
-
-			stream >> header;
-
-		}
-
-		return 0;
 	}
 }

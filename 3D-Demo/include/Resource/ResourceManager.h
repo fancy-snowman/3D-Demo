@@ -35,6 +35,18 @@ namespace Resource
 			return s_instance->GetMeshInternal(meshID);
 		}
 
+		static inline std::string GetMaterialName(ID materialID)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->GetMaterialNameInternal(materialID);
+		}
+
+		static inline ID GetMaterialID(std::string materialName)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->GetMaterialIDInternal(materialName);
+		}
+
 		static inline ID AddMaterial(const Material& material)
 		{
 			if (!s_instance) { Initialize(); }
@@ -51,6 +63,12 @@ namespace Resource
 		{
 			if (!s_instance) { Initialize(); }
 			return s_instance->LoadModelInternal(filePath);
+		}
+
+		static inline std::vector<ID> LoadMaterial(const std::string& filePath)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->LoadMaterialInternal(filePath);
 		}
 
 		static inline ID CreateVertexBuffer(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
@@ -156,8 +174,11 @@ namespace Resource
 
 		ID AddMaterialInternal(const Material& material);
 		std::shared_ptr<const Material> GetMaterialInternal(ID materialID);
+		std::string GetMaterialNameInternal(ID materialID);
+		ID GetMaterialIDInternal(std::string materialName);
 
 		ID LoadModelInternal(const std::string& filePath);
+		std::vector<ID> LoadMaterialInternal(const std::string& filePath);
 
 		ID CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData);
 		ID CreateIndexBufferInternal(size_t indexCount, DXGI_FORMAT format, const void* initialData);
@@ -172,9 +193,5 @@ namespace Resource
 		void BindDefaultShaderProgramInternal();
 
 		void BindCameraInternal(const Camera& camera);
-
-	private:
-
-		ID LoadMaterialInternal(const std::string& filePath);
 	};
 }

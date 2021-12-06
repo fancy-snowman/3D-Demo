@@ -13,7 +13,7 @@ namespace Resource
 			int SpecularMapIndex;
 			DirectX::XMFLOAT3 Ambient; // Ka
 			int AmbientMapIndex;
-			int SpecularExponent; // Ns
+			float SpecularExponent; // Ns
 
 			DirectX::XMFLOAT3 Padding;
 
@@ -24,7 +24,7 @@ namespace Resource
 				SpecularMapIndex(-1),
 				Ambient({ 0.2f, 0.2f, 0.2f }),
 				AmbientMapIndex(-1),
-				SpecularExponent(1),
+				SpecularExponent(1.0f),
 				Padding({ 0.0f, 0.0f, 0.0f }) {}
 		};
 
