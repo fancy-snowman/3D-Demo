@@ -3,6 +3,7 @@
 #include "Resource/Window.h"
 #include "Resource/ShaderProgram.h"
 #include "Resource/Buffer.h"
+#include "Resource/Texture.h"
 
 #include "Resource/Transform.h"
 #include "Resource/Mesh.h"

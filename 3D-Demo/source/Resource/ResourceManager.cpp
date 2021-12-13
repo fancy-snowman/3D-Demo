@@ -2,6 +2,9 @@
 #include "Resource/ResourceTypes.h"
 #include "Resource/ResourceManager.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
+
 namespace Resource
 {
 	std::unique_ptr<ResourceManager> ResourceManager::s_instance;
@@ -53,6 +56,9 @@ cbuffer LightBuffer : register (b3)
 	} Light;
 }
 
+Texture2D<float4> MaterialDiffuseMap : register (t0);
+SamplerState defaultSampler : register (s0);
+
 struct VS_IN
 {
 	float3 Position : POSITION;
@@ -88,7 +94,7 @@ PS_IN main(VS_IN input)
 
 	float4 normal = float4(input.Normal, 0.0f);
 	normal = mul(normal, Object.World);
-	output.Normal = normal.xyz;
+	output.Normal = normalize(normal.xyz);
 
 	output.Texcoord = input.Texcoord;
 
@@ -109,8 +115,8 @@ PS_OUT main(PS_IN input)
 		float3 Diffuse;
 		float3 Specular;
 	} lightSpecific;
-	lightSpecific.Diffuse = float3(0.1f, 0.1f, 0.1f);
-	lightSpecific.Specular = float3(0.3f, 0.3f, 0.3f);
+	lightSpecific.Diffuse = float3(0.6f, 0.6f, 0.6f);
+	lightSpecific.Specular = float3(0.8f, 0.8f, 0.8f);
 
 	PS_OUT output;
 
@@ -118,8 +124,15 @@ PS_OUT main(PS_IN input)
 	float3 lightReflect = normalize(reflect(lightDir * -1.0f, input.Normal));
 	float3 eyeDir = normalize(Camera.Position - input.Position);
 
+	float3 diffuse = Material.Diffuse;
+	
+	if (Material.DiffuseMapIndex != -1)
+	{
+		diffuse = MaterialDiffuseMap.Sample(defaultSampler, input.Texcoord).xyz;
+	}
+	
 	float3 ambientComponent = Material.Ambient * lightGeneral.Ambient;
-	float3 diffuseComponent = Material.Diffuse * max(0.0f, dot(lightDir, input.Normal)) * lightSpecific.Diffuse;
+	float3 diffuseComponent = diffuse * max(0.0f, dot(lightDir, input.Normal)) * lightSpecific.Diffuse;
 	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), Material.SpecularExponent) * lightSpecific.Specular;
 
 	float3 final = float3(0.0f, 0.0f, 0.0f);
@@ -128,6 +141,7 @@ PS_OUT main(PS_IN input)
 	final += specularComponent;
 
 	output.Color = float4(final, 1.0f);
+
 	return output;
 })";
 
@@ -443,6 +457,7 @@ PS_OUT main(PS_IN input)
 		DirectX::XMFLOAT3 specular = { 1.0f, 1.0f, 1.0f }; // Ks
 		DirectX::XMFLOAT3 ambient = { 1.0f, 1.0f, 1.0f }; // Ka
 		float specularExponent = 1; // Ns
+		ID diffuseMapID = 0; // map_Kd
 
 		while (std::getline(file, header))
 		{
@@ -458,6 +473,9 @@ PS_OUT main(PS_IN input)
 					material.Data.Specular = specular;
 					material.Data.Ambient = ambient;
 					material.Data.SpecularExponent = specularExponent;
+
+					material.DiffuseMap = diffuseMapID;
+					material.Data.DiffuseMapIndex = diffuseMapID ? 0 : -1;
 					
 					ID materialID = AddMaterial(material);
 					newMaterials.push_back(materialID);
@@ -468,6 +486,7 @@ PS_OUT main(PS_IN input)
 				specular = { 1.0f, 1.0f, 1.0f };
 				ambient = { 1.0f, 1.0f, 1.0f };
 				specularExponent = 1.0f;
+				diffuseMapID = 0;
 			}
 			else if (header == "Kd") // Diffuse
 			{
@@ -485,6 +504,20 @@ PS_OUT main(PS_IN input)
 			{
 				stream >> specularExponent;
 			}
+			else if (header == "map_Kd") // Diffuse map
+			{
+				std::string texturePath;
+				stream >> texturePath;
+
+				std::string directory;
+				auto lastDiv = filePath.rfind("/");
+				if (lastDiv != std::string::npos)
+				{
+					directory = filePath.substr(0, lastDiv + 1);
+				}
+
+				diffuseMapID = LoadTexture2D(directory + texturePath);
+			}
 		}
 
 		// Add the last material in the file
@@ -495,11 +528,28 @@ PS_OUT main(PS_IN input)
 			material.Data.Ambient = ambient;
 			material.Data.SpecularExponent = specularExponent;
 
+			material.DiffuseMap = diffuseMapID;
+			material.Data.DiffuseMapIndex = diffuseMapID ? 0 : -1;
+
 			ID materialID = AddMaterial(material);
 			newMaterials.push_back(materialID);
 		}
 
 		return newMaterials;
+	}
+
+	ID ResourceManager::LoadTexture2DInternal(const std::string& filePath)
+	{
+		int width;
+		int height;
+		unsigned char* imageData = stbi_load(filePath.c_str(), &width, &height, nullptr, 4);
+
+		if (!imageData)
+		{
+			return 0;
+		}
+
+		return CreateTexture2D(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 4, imageData);
 	}
 
 	ID ResourceManager::CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
@@ -582,6 +632,63 @@ PS_OUT main(PS_IN input)
 		return bufferID;
 	}
 
+	ID ResourceManager::CreateTexture2DInternal(UINT width, UINT height, DXGI_FORMAT format, UINT texelStride, const void* initData)
+	{
+		Resource::Texture2D texture;
+		
+		texture.Width = width;
+		texture.Height = height;
+		texture.Format = format;
+		texture.TexelStride = texelStride;
+
+		D3D11_TEXTURE2D_DESC textureDesc;
+		ZERO_MEMORY(textureDesc);
+		textureDesc.Width = width;
+		textureDesc.Height = height;
+		textureDesc.MipLevels = 1;
+		textureDesc.ArraySize = 1;
+		textureDesc.Format = format;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.Usage = D3D11_USAGE_DEFAULT;
+		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS;
+		//textureDesc.CPUAccessFlags;
+		//textureDesc.MiscFlags;
+
+		if (initData)
+		{
+			D3D11_SUBRESOURCE_DATA data;
+			ZERO_MEMORY(data);
+			data.pSysMem = initData;
+			data.SysMemPitch = texelStride * width;
+			ASSERT_HR(Platform::GPU::Device()->CreateTexture2D(&textureDesc, &data, texture.Texture.GetAddressOf()));
+		}
+		else
+		{
+			ASSERT_HR(Platform::GPU::Device()->CreateTexture2D(&textureDesc, NULL, texture.Texture.GetAddressOf()));
+		}
+
+		ASSERT_HR(Platform::GPU::Device()->CreateShaderResourceView(texture.Texture.Get(), NULL, texture.SRV.GetAddressOf()));
+		ASSERT_HR(Platform::GPU::Device()->CreateRenderTargetView(texture.Texture.Get(), NULL, texture.RTV.GetAddressOf()));
+		ASSERT_HR(Platform::GPU::Device()->CreateUnorderedAccessView(texture.Texture.Get(), NULL, texture.UAV.GetAddressOf()));
+
+		ID textureID = m_IDCounter++;
+		m_textures[textureID] = texture;
+
+		return textureID;
+	}
+
+	ID ResourceManager::CreateSamplerInternal(const D3D11_SAMPLER_DESC& description)
+	{
+		Resource::Sampler sampler;
+
+		ASSERT_HR(Platform::GPU::Device()->CreateSamplerState(&description, sampler.SamplerState.GetAddressOf()));
+
+		ID samplerID = m_IDCounter++;
+		m_samplers[samplerID] = sampler;
+
+		return samplerID;
+	}
+
 	void ResourceManager::BindVertexBufferInternal(ID bufferID, UINT offset, UINT slot)
 	{
 		if (m_vertexBuffers.count(bufferID) == 0)
@@ -629,6 +736,62 @@ PS_OUT main(PS_IN input)
 			break;
 		case ShaderStage::Pixel:
 			Platform::GPU::Context()->PSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
+			break;
+		}
+	}
+
+	void ResourceManager::BindShaderResourceInternal(ID textureID, ShaderStage stage, UINT slot)
+	{
+		if (m_textures.count(textureID) == 0)
+		{
+			return;
+		}
+		Texture2D& texture = m_textures[textureID];
+
+		switch (stage)
+		{
+		case ShaderStage::Vertex:
+			Platform::GPU::Context()->VSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
+			break;
+		case ShaderStage::Hull:
+			Platform::GPU::Context()->HSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
+			break;
+		case ShaderStage::Domain:
+			Platform::GPU::Context()->DSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
+			break;
+		case ShaderStage::Geometry:
+			Platform::GPU::Context()->GSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
+			break;
+		case ShaderStage::Pixel:
+			Platform::GPU::Context()->PSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
+			break;
+		}
+	}
+
+	void ResourceManager::BindSamplerInternal(ID samplerID, ShaderStage stage, UINT slot)
+	{
+		if (m_samplers.count(samplerID) == 0)
+		{
+			return;
+		}
+		Sampler& sampler = m_samplers[samplerID];
+
+		switch (stage)
+		{
+		case ShaderStage::Vertex:
+			Platform::GPU::Context()->VSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
+			break;
+		case ShaderStage::Hull:
+			Platform::GPU::Context()->HSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
+			break;
+		case ShaderStage::Domain:
+			Platform::GPU::Context()->DSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
+			break;
+		case ShaderStage::Geometry:
+			Platform::GPU::Context()->GSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
+			break;
+		case ShaderStage::Pixel:
+			Platform::GPU::Context()->PSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
 			break;
 		}
 	}

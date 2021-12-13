@@ -29,6 +29,7 @@ namespace Resource
 		};
 
 		MaterialData Data;
+		ID DiffuseMap = 0;
 		std::string Name;
 
 		Material(const std::string& name) : Name(name) {}

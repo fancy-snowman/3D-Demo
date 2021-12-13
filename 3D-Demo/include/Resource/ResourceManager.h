@@ -71,6 +71,12 @@ namespace Resource
 			return s_instance->LoadMaterialInternal(filePath);
 		}
 
+		static inline ID LoadTexture2D(const std::string& filePath)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->LoadTexture2DInternal(filePath);
+		}
+
 		static inline ID CreateVertexBuffer(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
 		{
 			if (!s_instance) { Initialize(); }
@@ -89,6 +95,18 @@ namespace Resource
 			return s_instance->CreateConstantBufferInternal(size, initialData);
 		}
 
+		static inline ID CreateTexture2D(UINT width, UINT height, DXGI_FORMAT format, UINT texelStride, const void* initData = nullptr)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->CreateTexture2DInternal(width, height, format, texelStride, initData);
+		}
+
+		static inline ID CreateSampler(const D3D11_SAMPLER_DESC& description)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->CreateSamplerInternal(description);
+		}
+
 		static inline void BindVertexBuffer(ID bufferID, UINT offset = 0, UINT slot = 0)
 		{
 			if (!s_instance) { Initialize(); }
@@ -105,6 +123,18 @@ namespace Resource
 		{
 			if (!s_instance) { Initialize(); }
 			return s_instance->BindConstantBufferInternal(bufferID, stage, slot);
+		}
+
+		static inline void BindShaderResource(ID textureID, ShaderStage stage, UINT slot)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->BindShaderResourceInternal(textureID, stage, slot);
+		}
+
+		static inline void BindSampler(ID samplerID, ShaderStage stage, UINT slot)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->BindSamplerInternal(samplerID, stage, slot);
 		}
 
 		static inline void UploadConstantBuffer(ID bufferID, const void* data, size_t size)
@@ -152,6 +182,8 @@ namespace Resource
 		std::unordered_map<ID, VertexBuffer> m_vertexBuffers;
 		std::unordered_map<ID, IndexBuffer> m_indexBuffers;
 		std::unordered_map<ID, ConstantBuffer> m_constantBuffers;
+		std::unordered_map<ID, Texture2D> m_textures;
+		std::unordered_map<ID, Sampler> m_samplers;
 
 		ShaderProgram m_defaultShaderProgram;
 		ConstantBuffer m_cameraBuffer;
@@ -179,14 +211,19 @@ namespace Resource
 
 		ID LoadModelInternal(const std::string& filePath);
 		std::vector<ID> LoadMaterialInternal(const std::string& filePath);
+		ID LoadTexture2DInternal(const std::string& filePath);
 
 		ID CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData);
 		ID CreateIndexBufferInternal(size_t indexCount, DXGI_FORMAT format, const void* initialData);
 		ID CreateConstantBufferInternal(size_t size, const void* initData);
+		ID CreateTexture2DInternal(UINT width, UINT height, DXGI_FORMAT format, UINT texelStride, const void* initData);
+		ID CreateSamplerInternal(const D3D11_SAMPLER_DESC& description);
 
 		void BindVertexBufferInternal(ID bufferID, UINT offset, UINT slot);
 		void BindIndexBufferInternal(ID bufferID, UINT offset);
 		void BindConstantBufferInternal(ID bufferID, ShaderStage stage, UINT slot);
+		void BindShaderResourceInternal(ID textureID, ShaderStage stage, UINT slot);
+		void BindSamplerInternal(ID samplerID, ShaderStage stage, UINT slot);
 
 		void UploadConstantBufferInternal(ID bufferID, const void* data, size_t size);
 

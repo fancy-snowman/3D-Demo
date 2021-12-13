@@ -5,11 +5,12 @@
 
 Scene::Scene()
 {
-	m_camera.Position = { 0.0f, 0.0f, 5.0f };
-	m_camera.Direction = { 0.0f, 0.0f, -1.0f };
+	m_camera.Position = { 0.0f, 50.0f, 0.0f };
+	//m_camera.Direction = { 0.0f, -0.707f, -0.707f };
+	DirectX::XMStoreFloat3(&m_camera.Direction, DirectX::XMVector3Normalize({ 0.0f, -1.f, -5.f }));
 	m_camera.AspectRatio = 800.f / 600.f;
 	m_camera.NearZ = 0.1f;
-	m_camera.FarZ = 15.f;
+	m_camera.FarZ = 500.f;
 	m_camera.FOV = DirectX::XM_PI / 2.f;
 	m_camera.Target = false;
 
@@ -63,9 +64,12 @@ Scene::Scene()
 
 	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
-	m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj") });
+	//m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj") });
+	//m_objects.push_back({ Resource::Manager::LoadModel("models/cube/cube.obj") });
+	m_objects.push_back({ Resource::Manager::LoadModel("models/sponza/sponza.obj") });
 
-	m_objects.back().Transform.Scale = { 15.0f, 15.0f, 15.0f };
+	m_objects.back().Transform.Scale = { 0.3f, 0.3f, 0.3f };
+	//m_objects.back().Transform.Scale = { 15.0f, 15.0f, 15.0f };
 
 	m_objectBuffer = Resource::Manager::CreateConstantBuffer(sizeof(ObjectBuffer));
 	m_materialBuffer = Resource::Manager::CreateConstantBuffer(sizeof(Resource::Material::MaterialData));
@@ -89,6 +93,25 @@ Scene::Scene()
 	//	Platform::GPU::Device()->CreateRasterizerState(&desc, rastState.GetAddressOf());
 	//	Platform::GPU::Context()->RSSetState(rastState.Get());
 	//}
+
+	D3D11_SAMPLER_DESC samplerDesc;
+	ZERO_MEMORY(samplerDesc);
+	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.MipLODBias = 0.0f;
+	samplerDesc.MaxAnisotropy = 1;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	//samplerDesc.BorderColor;
+	samplerDesc.MinLOD = -FLT_MAX;
+	samplerDesc.MaxLOD = FLT_MAX;
+
+	ID sampler = Resource::Manager::CreateSampler(samplerDesc);
+	//ID texture = Resource::Manager::LoadTexture2D("textures/christmas-me.png");
+
+	//Resource::Manager::BindShaderResource(texture, Resource::ShaderStage::Pixel, 0);
+	Resource::Manager::BindSampler(sampler, Resource::ShaderStage::Pixel, 0);
 }
 
 Scene::~Scene()
@@ -107,14 +130,14 @@ void Scene::Update(float delta)
 
 	for (auto& o : m_objects)
 	{
-		//float scale = 1.5f + std::cosf(elapsed * 0.8f) / 3.0f;
-		//o.Transform.Scale = { scale, scale, scale };
+	//	//float scale = 1.5f + std::cosf(elapsed * 0.8f) / 3.0f;
+	//	//o.Transform.Scale = { scale, scale, scale };
 
 		//o.Transform.Rotation.x = std::cosf(elapsed * 0.4f) * 1.3f;
 		//o.Transform.Rotation.y = std::sinf(elapsed) * 1.5f;
 		//o.Transform.Rotation.z = (1.f - std::cosf(elapsed)) * 1.1f;
 
-		o.Transform.Rotation.y += 0.5f * delta;
+		o.Transform.Rotation.y += 0.05f * delta;
 		o.Transform.Rotation.y = (o.Transform.Rotation.y > DirectX::XM_2PI) ? o.Transform.Rotation.y - DirectX::XM_2PI : o.Transform.Rotation.y;
 	}
 
@@ -148,8 +171,14 @@ void Scene::Draw()
 		for (auto& sm : mesh->Submeshes)
 		{
 			auto material = Resource::Manager::GetMaterial(sm.Material);
+
 			Resource::Manager::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
 			Resource::Manager::BindConstantBuffer(m_materialBuffer, Resource::ShaderStage::Pixel, 1);
+
+			if (material->DiffuseMap)
+			{
+				Resource::Manager::BindShaderResource(material->DiffuseMap, Resource::ShaderStage::Pixel, 0);
+			}
 
 			Platform::GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
 		}

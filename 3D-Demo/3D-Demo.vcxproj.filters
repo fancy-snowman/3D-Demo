@@ -83,5 +83,18 @@
     <ClInclude Include="include\Resource\ResourceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Resource\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\stb\stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="models\cube\cube.obj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="models\cube\cube_material.mtl" />
+    <None Include="models\sponza\sponza.mtl" />
   </ItemGroup>
 </Project>
