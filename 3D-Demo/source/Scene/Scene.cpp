@@ -14,54 +14,6 @@ Scene::Scene()
 	m_camera.FOV = DirectX::XM_PI / 2.f;
 	m_camera.Target = false;
 
-	//std::vector<Vertex> vertices = {
-	//	{ {-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, { 0.0f, 0.0f} },
-	//	{ {-1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, { 0.0f, 1.0f} },
-	//	{ { 1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, { 1.0f, 1.0f} },
-	//	{ { 1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, { 1.0f, 0.0f} },
-
-	//	{ {-1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}, { 1.0f, 0.0f} },
-	//	{ {-1.0f,  1.0f,  1.0f}, {0.0f, 1.0f, 0.0f}, { 1.0f, 1.0f} },
-	//	{ { 1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}, { 0.0f, 1.0f} },
-	//	{ { 1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}, { 0.0f, 0.0f} },
-	//};	
-
-	//std::vector<UINT> indices = {
-	//	0, 1, 2, 0, 2, 3, // Front
-	//	3, 2, 6, 3, 6, 7, // Right
-	//	7, 6, 5, 7, 5, 4, // Back
-	//	4, 5, 1, 4, 1, 0, // Left
-	//	1, 5, 6, 1, 6, 2, // Top
-	//	3, 7, 4, 3, 4, 0, // Bottom
-	//};
-
-
-	Resource::Material material("Default material");
-
-	// newmtl Chrome
-	//material.Data.Diffuse = { 0.768627f, 0.772549f, 0.768627f };
-	//material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
-	//material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
-	//material.Data.SpecularExponent = 179.999996f;
-
-	// newmtl Glass_-_Heavy_Color
-	//material.Data.Diffuse = { 0.098039f, 0.098039f, 0.098039f };
-	//material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
-	//material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
-	//material.Data.SpecularExponent = 179.999996f;
-
-	// newmtl Plastic_-_Matte_(Black)
-	//material.Data.Diffuse = { 0.098039f, 0.098039f, 0.098039f };
-	//material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
-	//material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
-	//material.Data.SpecularExponent = 179.999996f;
-
-	// newmtl Steel_-_Satin
-	material.Data.Diffuse = { 0.627451f, 0.627451f, 0.627451f };
-	material.Data.Ambient = { 1.000000f, 1.000000f, 1.000000f };
-	material.Data.Specular = { 1.000000f, 1.000000f, 1.000000f };
-	material.Data.SpecularExponent = 179.999996f;
-
 	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
 	//m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj") });
