@@ -22,6 +22,8 @@ using Microsoft::WRL::ComPtr;
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "d3dcompiler")
 
+#include "entt/entt.hpp"
+
 #define ID int
 
 #define ASSERT_HR(hr) assert(SUCCEEDED(hr))

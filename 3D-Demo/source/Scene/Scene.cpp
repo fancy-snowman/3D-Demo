@@ -2,26 +2,52 @@
 #include "Platform/GPU.h"
 #include "resource/Resource.h"
 #include "Scene/Scene.h"
+#include "Scene/Components.h"
 
 Scene::Scene()
 {
-	m_camera.Position = { 0.0f, 50.0f, 0.0f };
-	//m_camera.Direction = { 0.0f, -0.707f, -0.707f };
-	DirectX::XMStoreFloat3(&m_camera.Direction, DirectX::XMVector3Normalize({ 0.0f, -1.f, -5.f }));
-	m_camera.AspectRatio = 800.f / 600.f;
-	m_camera.NearZ = 0.1f;
-	m_camera.FarZ = 500.f;
-	m_camera.FOV = DirectX::XM_PI / 2.f;
-	m_camera.Target = false;
+	m_registry = std::make_shared<entt::registry>();
+}
 
-	//m_objects.push_back({ Resource::LoadModel("models/icosahedron.obj"), Resource::AddMaterial(material) });
-	//m_objects.push_back({ Resource::LoadModel("models/bunny.obj"), Resource::AddMaterial(material) });
-	//m_objects.push_back({ Resource::Manager::LoadModel("models/mandalorian.obj") });
-	//m_objects.push_back({ Resource::Manager::LoadModel("models/cube/cube.obj") });
-	m_objects.push_back({ Resource::Manager::LoadModel("models/sponza/sponza.obj") });
+Scene::~Scene()
+{
+	//
+}
 
-	m_objects.back().Transform.Scale = { 0.3f, 0.3f, 0.3f };
-	//m_objects.back().Transform.Scale = { 15.0f, 15.0f, 15.0f };
+void Scene::Setup()
+{
+	{
+		// Setup camera
+
+		Component::CameraComponent cameraSettings;
+		cameraSettings.AspectRatio = 800.f / 600.f;
+		cameraSettings.NearPlane = 0.1f;
+		cameraSettings.FarPlane = 500.f;
+		cameraSettings.FOV = DirectX::XM_PI / 2.f;
+		cameraSettings.Target = { 0.f, 0.f, 0.f };
+		cameraSettings.FollowTarget = true;
+
+		Component::TransformComponent cameraTransform;
+		cameraTransform.Position = { 0.f, 0.f, 5.0f };
+
+		m_mainCamera = m_registry->create();
+		m_registry->emplace<Component::CameraComponent>(m_mainCamera, cameraSettings);
+		m_registry->emplace<Component::TransformComponent>(m_mainCamera, cameraTransform);
+	}
+
+	{
+		// Setup scene object
+
+		Component::MeshComponent objectMesh;
+		objectMesh.MeshID = Resource::Manager::LoadModel("models/mandalorian.obj");
+
+		Component::TransformComponent objectTransform;
+		objectTransform.Scale = { 15.f, 15.f, 15.f };
+
+		entt::entity object = m_registry->create();
+		m_registry->emplace<Component::MeshComponent>(object, objectMesh);
+		m_registry->emplace<Component::TransformComponent>(object, objectTransform);
+	}
 
 	m_objectBuffer = Resource::Manager::CreateConstantBuffer(sizeof(ObjectBuffer));
 	m_materialBuffer = Resource::Manager::CreateConstantBuffer(sizeof(Resource::Material::MaterialData));
@@ -60,60 +86,57 @@ Scene::Scene()
 	samplerDesc.MaxLOD = FLT_MAX;
 
 	ID sampler = Resource::Manager::CreateSampler(samplerDesc);
-	//ID texture = Resource::Manager::LoadTexture2D("textures/christmas-me.png");
 
-	//Resource::Manager::BindShaderResource(texture, Resource::ShaderStage::Pixel, 0);
 	Resource::Manager::BindSampler(sampler, Resource::ShaderStage::Pixel, 0);
-}
-
-Scene::~Scene()
-{
-	//
 }
 
 void Scene::Update(float delta)
 {
 	elapsed += delta * 0.5f;
 
-	//if (elapsed >= DirectX::XM_2PI)
-	//{
-	//	elapsed -= DirectX::XM_2PI;
-	//}
+	//auto view = m_registry->view<Component::CameraComponent, Component::TransformComponent>();
+	//view.each([&](auto entity, const auto& cameraComp, auto& transformComp) {
+	//	DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&transformComp.Position);
+	//	pos = DirectX::XMVector3TransformCoord(pos, DirectX::XMMatrixRotationY(delta));
+	//	DirectX::XMStoreFloat3(&transformComp.Position, pos);
+	//});
 
-	for (auto& o : m_objects)
-	{
-	//	//float scale = 1.5f + std::cosf(elapsed * 0.8f) / 3.0f;
-	//	//o.Transform.Scale = { scale, scale, scale };
-
-		//o.Transform.Rotation.x = std::cosf(elapsed * 0.4f) * 1.3f;
-		//o.Transform.Rotation.y = std::sinf(elapsed) * 1.5f;
-		//o.Transform.Rotation.z = (1.f - std::cosf(elapsed)) * 1.1f;
-
-		o.Transform.Rotation.y += 0.05f * delta;
-		o.Transform.Rotation.y = (o.Transform.Rotation.y > DirectX::XM_2PI) ? o.Transform.Rotation.y - DirectX::XM_2PI : o.Transform.Rotation.y;
-	}
-
-	// Change to transform
-	//{
-	//	DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&m_pointLight.Position);
-	//	pos = DirectX::XMVector3TransformCoord(pos, DirectX::XMMatrixRotationY(delta * 0.5f));
-	//	DirectX::XMStoreFloat3(&m_pointLight.Position, pos);
-	//}
+	auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
+	view.each([&](auto entity, const auto& cameraComp, auto& transformComp) {
+		transformComp.Rotation.y += delta;
+		transformComp.Rotation.y = (transformComp.Rotation.y > DirectX::XM_2PI) ? transformComp.Rotation.y - DirectX::XM_2PI : transformComp.Rotation.y;
+	});
 }
 
 void Scene::Draw()
 {
 	Resource::Manager::BindDefaultShaderProgram();
-	Resource::Manager::BindCamera(m_camera);
+
+	{
+		Resource::Camera camera;
+		Component::TransformComponent& transform = m_registry->get<Component::TransformComponent>(m_mainCamera);
+		Component::CameraComponent& settings = m_registry->get<Component::CameraComponent>(m_mainCamera);
+
+		camera.AspectRatio = settings.AspectRatio;
+		camera.Direction = settings.Target;
+		camera.NearZ = settings.NearPlane;
+		camera.FarZ = settings.FarPlane;
+		camera.FOV = settings.FOV;
+		camera.Target = settings.FollowTarget;
+		camera.Position = transform.Position;
+
+		Resource::Manager::BindCamera(camera);
+	}
 
 	Resource::Manager::UploadConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
 	Resource::Manager::BindConstantBuffer(m_lightBuffer, Resource::ShaderStage::Pixel, 3);
 
-	for (auto& o : m_objects)
-	{
-		auto mesh = Resource::Manager::GetMesh(o.Mesh);
+	auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
 
-		DirectX::XMFLOAT4X4 worldMatrix = o.Transform.GetMatrixTransposed();
+	view.each([&](auto entity, const auto& meshComp, const auto& transformComp) {
+		auto mesh = Resource::Manager::GetMesh(meshComp.MeshID);
+
+		DirectX::XMFLOAT4X4 worldMatrix = transformComp.GetMatrixTransposed();
 		Resource::Manager::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
 		Resource::Manager::BindConstantBuffer(m_objectBuffer, Resource::ShaderStage::Vertex, 0);
 
@@ -134,5 +157,5 @@ void Scene::Draw()
 
 			Platform::GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
 		}
-	}
+	});
 }

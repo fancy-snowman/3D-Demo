@@ -13,6 +13,7 @@ struct RenderPass
 struct SceneObject
 {
 	ID Mesh;
+	ID Parent;
 	Resource::TransformInfo Transform;
 };
 
@@ -29,8 +30,8 @@ public:
 	Scene();
 	~Scene();
 
+	void Setup();
 	void Update(float delta);
-
 	void Draw();
 
 private:
@@ -41,10 +42,13 @@ private:
 	ID m_materialBuffer;
 	ID m_lightBuffer;
 
-	Resource::Camera m_camera;
+	//Resource::Camera m_camera;
+	entt::entity m_mainCamera;
 	Resource::PointLight m_pointLight;
 
-	std::vector<SceneObject> m_objects;
+	//std::vector<SceneObject> m_objects;
+
+	std::shared_ptr<entt::registry> m_registry;
 
 private:
 
