@@ -318,6 +318,7 @@ PS_OUT main(PS_IN input)
 			{
 				DirectX::XMFLOAT2 texcoord;
 				stream >> texcoord.x >> texcoord.y;
+				texcoord.y = (1.0f - texcoord.y);
 				texcoords.push_back(texcoord);
 			}
 
@@ -820,16 +821,10 @@ PS_OUT main(PS_IN input)
 		XMMATRIX xmProjection;
 
 		XMVECTOR xmPosition = XMLoadFloat3(&camera.Position);
-		XMVECTOR xmDirection = XMLoadFloat3(&camera.Direction);
+		XMVECTOR xmForward = XMLoadFloat3(&camera.Forward);
+		XMVECTOR xmUp = XMLoadFloat3(&camera.Up);
 
-		if (camera.Target)
-		{
-			xmView = XMMatrixLookAtLH(xmPosition, xmDirection, { 0.0f, 1.0f, 0.0f, 0.0f });
-		}
-		else
-		{
-			xmView = XMMatrixLookToLH(xmPosition, xmDirection, { 0.0f, 1.0f, 0.0f, 0.0f });
-		}
+		xmView = XMMatrixLookToLH(xmPosition, xmForward, xmUp);
 		xmProjection = XMMatrixPerspectiveFovLH(camera.FOV, camera.AspectRatio, camera.NearZ, camera.FarZ);
 
 		CameraBuffer buffer;

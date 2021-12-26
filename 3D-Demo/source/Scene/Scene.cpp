@@ -22,16 +22,19 @@ void Scene::Setup()
 		Component::CameraComponent cameraSettings;
 		cameraSettings.AspectRatio = 800.f / 600.f;
 		cameraSettings.NearPlane = 0.1f;
-		cameraSettings.FarPlane = 500.f;
+		cameraSettings.FarPlane = 1000.f;
 		cameraSettings.FOV = DirectX::XM_PI / 2.f;
-		cameraSettings.Target = { 0.f, 0.f, 0.f };
-		cameraSettings.FollowTarget = true;
+		cameraSettings.Target = { 0.f, 0.f, 1.f };
+		//cameraSettings.FollowTarget = true;
+
+		Component::CameraControllerFPS cameraController;
 
 		Component::TransformComponent cameraTransform;
-		cameraTransform.Position = { 0.f, 0.f, 5.0f };
+		cameraTransform.Position = { 0.f, 50.f, 1.0f };
 
 		m_mainCamera = m_registry->create();
 		m_registry->emplace<Component::CameraComponent>(m_mainCamera, cameraSettings);
+		m_registry->emplace<Component::CameraControllerFPS>(m_mainCamera, cameraController);
 		m_registry->emplace<Component::TransformComponent>(m_mainCamera, cameraTransform);
 	}
 
@@ -39,10 +42,12 @@ void Scene::Setup()
 		// Setup scene object
 
 		Component::MeshComponent objectMesh;
-		objectMesh.MeshID = Resource::Manager::LoadModel("models/mandalorian.obj");
+		//objectMesh.MeshID = Resource::Manager::LoadModel("models/mandalorian.obj");
+		objectMesh.MeshID = Resource::Manager::LoadModel("models/sponza/sponza.obj");
 
 		Component::TransformComponent objectTransform;
-		objectTransform.Scale = { 15.f, 15.f, 15.f };
+		//objectTransform.Scale = { 15.f, 15.f, 15.f };
+		objectTransform.Scale = { 0.5f, 0.5f, 0.5f };
 
 		entt::entity object = m_registry->create();
 		m_registry->emplace<Component::MeshComponent>(object, objectMesh);
@@ -101,10 +106,76 @@ void Scene::Update(float delta)
 	//	DirectX::XMStoreFloat3(&transformComp.Position, pos);
 	//});
 
-	auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
-	view.each([&](auto entity, const auto& cameraComp, auto& transformComp) {
-		transformComp.Rotation.y += delta;
-		transformComp.Rotation.y = (transformComp.Rotation.y > DirectX::XM_2PI) ? transformComp.Rotation.y - DirectX::XM_2PI : transformComp.Rotation.y;
+	//auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
+	//view.each([&](auto entity, const auto& cameraComp, auto& transformComp) {
+	//	transformComp.Rotation.y += delta;
+	//	transformComp.Rotation.y = (transformComp.Rotation.y > DirectX::XM_2PI) ? transformComp.Rotation.y - DirectX::XM_2PI : transformComp.Rotation.y;
+	//});
+
+	auto view = m_registry->view<Component::CameraComponent, Component::CameraControllerFPS, Component::TransformComponent>();
+
+	view.each([](auto entity, const Component::CameraComponent& camera, const Component::CameraControllerFPS& controller, Component::TransformComponent& transform) {
+
+		using namespace DirectX;
+
+		XMVECTOR position = XMLoadFloat3(&transform.Position);
+
+		XMVECTOR forward;
+		XMVECTOR right;
+		XMVECTOR up;
+		{
+			XMFLOAT4X4 worldMatrixFloat = transform.GetMatrix();
+
+			forward = XMVector3Normalize({ worldMatrixFloat._31, worldMatrixFloat._32, worldMatrixFloat._33, 0.f });
+			right = XMVector3Normalize({ worldMatrixFloat._11, worldMatrixFloat._12, worldMatrixFloat._13, 0.f });
+			up = XMVector3Normalize({ worldMatrixFloat._21, worldMatrixFloat._22, worldMatrixFloat._23, 0.f });
+		}
+
+		XMVECTOR movement = { 0, 0, 0, 0 };
+
+		if (controller.MoveForwardKey && GetAsyncKeyState(controller.MoveForwardKey))
+			movement += forward * controller.Speed;
+		if (controller.MoveLeftKey && GetAsyncKeyState(controller.MoveLeftKey))
+			movement -= right * controller.Speed;
+		if (controller.MoveBackwardKey && GetAsyncKeyState(controller.MoveBackwardKey))
+			movement -= forward * controller.Speed;
+		if (controller.MoveRightKey && GetAsyncKeyState(controller.MoveRightKey))
+			movement += right * controller.Speed;
+		if (controller.MoveUpKey && GetAsyncKeyState(controller.MoveUpKey))
+			movement += up * controller.Speed;
+		if (controller.MoveDownKey && GetAsyncKeyState(controller.MoveDownKey))
+			movement -= up * controller.Speed;
+
+		movement = XMVector3Normalize(movement);
+
+		if (GetAsyncKeyState(VK_SHIFT))
+			movement *= 2.f;
+
+		position += movement;
+
+		XMStoreFloat3(&transform.Position, position);
+
+		float roll = 0;
+		float pitch = 0;
+		float yaw = 0;
+
+		if (GetAsyncKeyState(VK_LEFT))
+			yaw -= controller.TurnSpeedHorizontal;
+		if (GetAsyncKeyState(VK_RIGHT))
+			yaw += controller.TurnSpeedHorizontal;
+		if (GetAsyncKeyState(VK_UP))
+			pitch -= controller.TurnSpeedVertical;
+		if (GetAsyncKeyState(VK_DOWN))
+			pitch += controller.TurnSpeedVertical;
+
+		//XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+
+		//XMVECTOR rotation = transform.Rotation;
+		//XMRotationFrom
+
+		transform.Rotation.x += pitch;
+		transform.Rotation.y += yaw;
+		transform.Rotation.z += roll;
 	});
 }
 
@@ -118,11 +189,22 @@ void Scene::Draw()
 		Component::CameraComponent& settings = m_registry->get<Component::CameraComponent>(m_mainCamera);
 
 		camera.AspectRatio = settings.AspectRatio;
-		camera.Direction = settings.Target;
+
+		{
+			DirectX::XMFLOAT4X4 worldMatrixFloat = transform.GetMatrix();
+
+			DirectX::XMVECTOR forward = DirectX::XMVector3Normalize({ worldMatrixFloat._31, worldMatrixFloat._32, worldMatrixFloat._33, 0.f });
+			DirectX::XMVECTOR up = DirectX::XMVector3Normalize({ worldMatrixFloat._21, worldMatrixFloat._22, worldMatrixFloat._23, 0.f });
+			DirectX::XMVECTOR right = DirectX::XMVector3Normalize({ worldMatrixFloat._11, worldMatrixFloat._12, worldMatrixFloat._13, 0.f });
+			
+			DirectX::XMStoreFloat3(&camera.Forward, forward);
+			DirectX::XMStoreFloat3(&camera.Up, up);
+			DirectX::XMStoreFloat3(&camera.Right, right);
+		}
+
 		camera.NearZ = settings.NearPlane;
 		camera.FarZ = settings.FarPlane;
 		camera.FOV = settings.FOV;
-		camera.Target = settings.FollowTarget;
 		camera.Position = transform.Position;
 
 		Resource::Manager::BindCamera(camera);
