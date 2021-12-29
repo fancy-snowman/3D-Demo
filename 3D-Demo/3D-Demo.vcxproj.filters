@@ -39,6 +39,12 @@
     <ClCompile Include="source\Resource\ResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\Graphics\Renderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Graphics\CommandBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Scene\Scene.h">
@@ -95,6 +101,15 @@
     <ClInclude Include="include\Scene\Components.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Graphics\Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Graphics\RenderPass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Graphics\CommandBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Object Include="models\cube\cube.obj" />
@@ -102,5 +117,8 @@
   <ItemGroup>
     <None Include="models\cube\cube_material.mtl" />
     <None Include="models\sponza\sponza.mtl" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="assets\shaders\DefaultShaderProgram.hlsl" />
   </ItemGroup>
 </Project>

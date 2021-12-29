@@ -6,7 +6,7 @@
 #include <chrono>
 
 int main()
-{	
+{
 	Resource::Window window(800, 600);
 	
 	Scene scene;

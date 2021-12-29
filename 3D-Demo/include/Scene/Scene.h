@@ -2,6 +2,8 @@
 #include "pch.h"
 #include "Resource/ResourceTypes.h"
 
+#include "Graphics/CommandBuffer.h"
+
 struct RenderPass
 {
 	ComPtr<ID3D11VertexShader> VertexShader;
@@ -42,6 +44,9 @@ private:
 	ID m_materialBuffer;
 	ID m_lightBuffer;
 
+	ID m_cameraBuffer;
+	ID m_defaultShader;
+
 	//Resource::Camera m_camera;
 	entt::entity m_mainCamera;
 	Resource::PointLight m_pointLight;
@@ -50,10 +55,20 @@ private:
 
 	std::shared_ptr<entt::registry> m_registry;
 
+	Graphics::CommandBuffer m_commandBuffer;
+
 private:
 
 	struct ObjectBuffer
 	{
 		DirectX::XMFLOAT4X4 World;
+	};
+
+	struct CameraBuffer
+	{
+		DirectX::XMFLOAT4X4 View;
+		DirectX::XMFLOAT4X4 Projection;
+		DirectX::XMFLOAT3 Position;
+		float Padding;
 	};
 };

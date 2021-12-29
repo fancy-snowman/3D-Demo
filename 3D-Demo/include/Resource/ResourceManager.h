@@ -107,52 +107,46 @@ namespace Resource
 			return s_instance->CreateSamplerInternal(description);
 		}
 
-		static inline void BindVertexBuffer(ID bufferID, UINT offset = 0, UINT slot = 0)
+		static inline ID CreateShaderProgram(const std::string& filePath)
 		{
 			if (!s_instance) { Initialize(); }
-			return s_instance->BindVertexBufferInternal(bufferID, offset, slot);
+			return s_instance->CreateShaderProgramInternal(filePath);
 		}
 
-		static inline void BindIndexBuffer(ID bufferID, UINT offset = 0)
+		static inline std::shared_ptr<const VertexBuffer> GetVertexBuffer(ID bufferID)
 		{
 			if (!s_instance) { Initialize(); }
-			return s_instance->BindIndexBufferInternal(bufferID, offset);
+			return s_instance->GetVertexBufferInternal(bufferID);
 		}
 
-		static inline void BindConstantBuffer(ID bufferID, ShaderStage stage, UINT slot)
+		static inline std::shared_ptr<const IndexBuffer> GetIndexBuffer(ID bufferID)
 		{
 			if (!s_instance) { Initialize(); }
-			return s_instance->BindConstantBufferInternal(bufferID, stage, slot);
+			return s_instance->GetIndexBufferInternal(bufferID);
 		}
 
-		static inline void BindShaderResource(ID textureID, ShaderStage stage, UINT slot)
+		static inline std::shared_ptr<const ConstantBuffer> GetConstantBuffer(ID bufferID)
 		{
 			if (!s_instance) { Initialize(); }
-			return s_instance->BindShaderResourceInternal(textureID, stage, slot);
+			return s_instance->GetConstantBufferInternal(bufferID);
 		}
 
-		static inline void BindSampler(ID samplerID, ShaderStage stage, UINT slot)
+		static inline std::shared_ptr<const Texture2D> GetTexture2D(ID textureID)
 		{
 			if (!s_instance) { Initialize(); }
-			return s_instance->BindSamplerInternal(samplerID, stage, slot);
+			return s_instance->GetTexture2DInternal(textureID);
 		}
 
-		static inline void UploadConstantBuffer(ID bufferID, const void* data, size_t size)
+		static inline std::shared_ptr<const Sampler> GetSampler(ID samplerID)
 		{
 			if (!s_instance) { Initialize(); }
-			return s_instance->UploadConstantBufferInternal(bufferID, data, size);
+			return s_instance->GetSamplerInternal(samplerID);
 		}
 
-		static inline void BindDefaultShaderProgram()
+		static inline std::shared_ptr<const ShaderProgram> GetShaderProgram(ID programID)
 		{
 			if (!s_instance) { Initialize(); }
-			s_instance->BindDefaultShaderProgramInternal();
-		}
-
-		static inline void BindCamera(const Camera& camera)
-		{
-			if (!s_instance) { Initialize(); }
-			s_instance->BindCameraInternal(camera);
+			return s_instance->GetShaderProgramInternal(programID);
 		}
 
 	private:
@@ -179,11 +173,13 @@ namespace Resource
 		std::unordered_map<ID, std::shared_ptr<Material>> m_materials;
 		std::unordered_map<std::string, ID> m_materialNames;
 
-		std::unordered_map<ID, VertexBuffer> m_vertexBuffers;
-		std::unordered_map<ID, IndexBuffer> m_indexBuffers;
-		std::unordered_map<ID, ConstantBuffer> m_constantBuffers;
-		std::unordered_map<ID, Texture2D> m_textures;
-		std::unordered_map<ID, Sampler> m_samplers;
+		std::unordered_map<ID, std::shared_ptr<VertexBuffer>> m_vertexBuffers;
+		std::unordered_map<ID, std::shared_ptr<IndexBuffer>> m_indexBuffers;
+		std::unordered_map<ID, std::shared_ptr<ConstantBuffer>> m_constantBuffers;
+		std::unordered_map<ID, std::shared_ptr<Texture2D>> m_textures;
+		std::unordered_map<ID, std::shared_ptr<Sampler>> m_samplers;
+
+		std::unordered_map<ID, std::shared_ptr<ShaderProgram>> m_shaderPrograms;
 
 		ShaderProgram m_defaultShaderProgram;
 		ConstantBuffer m_cameraBuffer;
@@ -218,17 +214,18 @@ namespace Resource
 		ID CreateConstantBufferInternal(size_t size, const void* initData);
 		ID CreateTexture2DInternal(UINT width, UINT height, DXGI_FORMAT format, UINT texelStride, const void* initData);
 		ID CreateSamplerInternal(const D3D11_SAMPLER_DESC& description);
+		ID CreateShaderProgramInternal(const std::string& filePath);
 
-		void BindVertexBufferInternal(ID bufferID, UINT offset, UINT slot);
-		void BindIndexBufferInternal(ID bufferID, UINT offset);
-		void BindConstantBufferInternal(ID bufferID, ShaderStage stage, UINT slot);
-		void BindShaderResourceInternal(ID textureID, ShaderStage stage, UINT slot);
-		void BindSamplerInternal(ID samplerID, ShaderStage stage, UINT slot);
+		std::shared_ptr<const VertexBuffer> GetVertexBufferInternal(ID bufferID);
+		std::shared_ptr<const IndexBuffer> GetIndexBufferInternal(ID bufferID);
+		std::shared_ptr<const ConstantBuffer> GetConstantBufferInternal(ID bufferID);
+		std::shared_ptr<const Texture2D> GetTexture2DInternal(ID textureID);
+		std::shared_ptr<const Sampler> GetSamplerInternal(ID samplerID);
+		std::shared_ptr<const ShaderProgram> GetShaderProgramInternal(ID programID);
 
-		void UploadConstantBufferInternal(ID bufferID, const void* data, size_t size);
+	private:
 
-		void BindDefaultShaderProgramInternal();
-
-		void BindCameraInternal(const Camera& camera);
+		std::string FindEntryPoint(const std::string& content, const std::string& keyword);
+		ComPtr<ID3DBlob> CompileShader(const std::string& src, const std::string& entryPoint, const std::string& shaderModel);
 	};
 }

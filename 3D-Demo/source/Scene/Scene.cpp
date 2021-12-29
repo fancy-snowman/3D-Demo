@@ -25,7 +25,6 @@ void Scene::Setup()
 		cameraSettings.FarPlane = 1000.f;
 		cameraSettings.FOV = DirectX::XM_PI / 2.f;
 		cameraSettings.Target = { 0.f, 0.f, 1.f };
-		//cameraSettings.FollowTarget = true;
 
 		Component::CameraControllerFPS cameraController;
 
@@ -63,6 +62,10 @@ void Scene::Setup()
 
 	m_lightBuffer = Resource::Manager::CreateConstantBuffer(sizeof(Resource::PointLight), &m_pointLight);
 
+	m_cameraBuffer = Resource::Manager::CreateConstantBuffer(sizeof(CameraBuffer), NULL);
+
+	m_defaultShader = Resource::Manager::CreateShaderProgram("assets/shaders/DefaultShaderProgram.hlsl");
+
 	// ---
 
 	//{
@@ -92,25 +95,13 @@ void Scene::Setup()
 
 	ID sampler = Resource::Manager::CreateSampler(samplerDesc);
 
-	Resource::Manager::BindSampler(sampler, Resource::ShaderStage::Pixel, 0);
+	//Resource::Manager::BindSampler(sampler, Resource::ShaderStage::Pixel, 0);
+	m_commandBuffer.BindSampler(sampler, (UINT)Resource::ShaderStage::Pixel, 0);
 }
 
 void Scene::Update(float delta)
 {
 	elapsed += delta * 0.5f;
-
-	//auto view = m_registry->view<Component::CameraComponent, Component::TransformComponent>();
-	//view.each([&](auto entity, const auto& cameraComp, auto& transformComp) {
-	//	DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&transformComp.Position);
-	//	pos = DirectX::XMVector3TransformCoord(pos, DirectX::XMMatrixRotationY(delta));
-	//	DirectX::XMStoreFloat3(&transformComp.Position, pos);
-	//});
-
-	//auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
-	//view.each([&](auto entity, const auto& cameraComp, auto& transformComp) {
-	//	transformComp.Rotation.y += delta;
-	//	transformComp.Rotation.y = (transformComp.Rotation.y > DirectX::XM_2PI) ? transformComp.Rotation.y - DirectX::XM_2PI : transformComp.Rotation.y;
-	//});
 
 	auto view = m_registry->view<Component::CameraComponent, Component::CameraControllerFPS, Component::TransformComponent>();
 
@@ -168,11 +159,6 @@ void Scene::Update(float delta)
 		if (GetAsyncKeyState(VK_DOWN))
 			pitch += controller.TurnSpeedVertical;
 
-		//XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
-
-		//XMVECTOR rotation = transform.Rotation;
-		//XMRotationFrom
-
 		transform.Rotation.x += pitch;
 		transform.Rotation.y += yaw;
 		transform.Rotation.z += roll;
@@ -181,7 +167,7 @@ void Scene::Update(float delta)
 
 void Scene::Draw()
 {
-	Resource::Manager::BindDefaultShaderProgram();
+	m_commandBuffer.BindShaderProgram(m_defaultShader);
 
 	{
 		Resource::Camera camera;
@@ -207,11 +193,19 @@ void Scene::Draw()
 		camera.FOV = settings.FOV;
 		camera.Position = transform.Position;
 
-		Resource::Manager::BindCamera(camera);
+		{
+			CameraBuffer cameraBuffer;
+			cameraBuffer.Position = camera.Position;
+			cameraBuffer.View = camera.GetViewMatrixTransposed();
+			cameraBuffer.Projection = camera.GetProjectionMatrixTransposed();
+			
+			m_commandBuffer.UpdateConstantBuffer(m_cameraBuffer, &cameraBuffer, sizeof(CameraBuffer));
+			m_commandBuffer.BindConstantBuffer(m_cameraBuffer, (UINT)Resource::ShaderStage::Vertex | (UINT)Resource::ShaderStage::Pixel, 2);
+		}
 	}
 
-	Resource::Manager::UploadConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
-	Resource::Manager::BindConstantBuffer(m_lightBuffer, Resource::ShaderStage::Pixel, 3);
+	m_commandBuffer.UpdateConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
+	m_commandBuffer.BindConstantBuffer(m_lightBuffer, (UINT)Resource::ShaderStage::Pixel, 3);
 
 	auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
 
@@ -219,25 +213,25 @@ void Scene::Draw()
 		auto mesh = Resource::Manager::GetMesh(meshComp.MeshID);
 
 		DirectX::XMFLOAT4X4 worldMatrix = transformComp.GetMatrixTransposed();
-		Resource::Manager::UploadConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
-		Resource::Manager::BindConstantBuffer(m_objectBuffer, Resource::ShaderStage::Vertex, 0);
+		m_commandBuffer.UpdateConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
+		m_commandBuffer.BindConstantBuffer(m_objectBuffer, (UINT)Resource::ShaderStage::Vertex, 0);
 
-		Resource::Manager::BindVertexBuffer(mesh->VertexBuffer);
-		Resource::Manager::BindIndexBuffer(mesh->IndexBuffer);
+		m_commandBuffer.BindVertexBuffer(mesh->VertexBuffer);
+		m_commandBuffer.BindIndexBuffer(mesh->IndexBuffer);
 
 		for (auto& sm : mesh->Submeshes)
 		{
 			auto material = Resource::Manager::GetMaterial(sm.Material);
 
-			Resource::Manager::UploadConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
-			Resource::Manager::BindConstantBuffer(m_materialBuffer, Resource::ShaderStage::Pixel, 1);
+			m_commandBuffer.UpdateConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
+			m_commandBuffer.BindConstantBuffer(m_materialBuffer, (UINT)Resource::ShaderStage::Pixel, 1);
 
 			if (material->DiffuseMap)
 			{
-				Resource::Manager::BindShaderResource(material->DiffuseMap, Resource::ShaderStage::Pixel, 0);
+				m_commandBuffer.BindShaderResource(material->DiffuseMap, (UINT)Resource::ShaderStage::Pixel, 0);
 			}
 
-			Platform::GPU::Context()->DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
+			m_commandBuffer.DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);
 		}
 	});
 }

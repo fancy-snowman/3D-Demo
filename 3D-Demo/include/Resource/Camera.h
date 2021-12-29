@@ -13,5 +13,32 @@ namespace Resource
 		float NearZ;
 		float FarZ;
 		float FOV;
+
+		inline DirectX::XMFLOAT4X4 GetViewMatrixTransposed()
+		{
+			using namespace DirectX;
+			XMFLOAT4X4 view;
+			XMStoreFloat4x4(
+				&view,
+				XMMatrixTranspose(XMMatrixLookToLH(
+					XMLoadFloat3(&Position),
+					XMLoadFloat3(&Forward),
+					XMLoadFloat3(&Up))));
+			return view;
+		}
+
+		inline DirectX::XMFLOAT4X4 GetProjectionMatrixTransposed()
+		{
+			using namespace DirectX;
+			XMFLOAT4X4 projection;
+			XMStoreFloat4x4(
+				&projection,
+				XMMatrixTranspose(XMMatrixPerspectiveFovLH(
+					FOV,
+					AspectRatio,
+					NearZ,
+					FarZ)));
+			return projection;
+		}
 	};
 }

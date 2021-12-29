@@ -18,6 +18,8 @@ namespace Resource
 		ComPtr<ID3D11VertexShader> Vertex;
 		ComPtr<ID3D11PixelShader> Pixel;
 
+		UINT Stages = 0;
+
 		void Bind();
 	};
 }

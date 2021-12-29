@@ -573,7 +573,7 @@ PS_OUT main(PS_IN input)
 		ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&vertexBufferDesc, &data, buffer.Buffer.GetAddressOf()));
 
 		ID bufferID = m_IDCounter++;
-		m_vertexBuffers[bufferID] = buffer;
+		m_vertexBuffers[bufferID] = std::make_shared<VertexBuffer>(buffer);
 
 		return bufferID;
 	}
@@ -597,7 +597,7 @@ PS_OUT main(PS_IN input)
 		ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&indexBufferDesc, &data, buffer.Buffer.GetAddressOf()));
 
 		ID meshID = m_IDCounter++;
-		m_indexBuffers[meshID] = buffer;
+		m_indexBuffers[meshID] = std::make_shared<IndexBuffer>(buffer);
 
 		return meshID;
 	}
@@ -628,7 +628,7 @@ PS_OUT main(PS_IN input)
 		}
 
 		ID bufferID = m_IDCounter++;
-		m_constantBuffers[bufferID] = buffer;
+		m_constantBuffers[bufferID] = std::make_shared<ConstantBuffer>(buffer);
 
 		return bufferID;
 	}
@@ -673,7 +673,7 @@ PS_OUT main(PS_IN input)
 		ASSERT_HR(Platform::GPU::Device()->CreateUnorderedAccessView(texture.Texture.Get(), NULL, texture.UAV.GetAddressOf()));
 
 		ID textureID = m_IDCounter++;
-		m_textures[textureID] = texture;
+		m_textures[textureID] = std::make_shared<Texture2D>(texture);
 
 		return textureID;
 	}
@@ -685,156 +685,151 @@ PS_OUT main(PS_IN input)
 		ASSERT_HR(Platform::GPU::Device()->CreateSamplerState(&description, sampler.SamplerState.GetAddressOf()));
 
 		ID samplerID = m_IDCounter++;
-		m_samplers[samplerID] = sampler;
+		m_samplers[samplerID] = std::make_shared<Sampler>(sampler);
 
 		return samplerID;
 	}
 
-	void ResourceManager::BindVertexBufferInternal(ID bufferID, UINT offset, UINT slot)
+	ID ResourceManager::CreateShaderProgramInternal(const std::string& filePath)
+	{
+		std::ifstream file(filePath);
+
+		if (!file.is_open())
+		{
+			return 0;
+		}
+
+		std::string shaderContent( (std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()) );
+
+		std::string entryPoint;
+		ShaderProgram program;
+		
+		/**
+		* Compile vertex shader if found
+		*/
+
+		entryPoint = FindEntryPoint(shaderContent, "VERTEX_MAIN");
+		if (entryPoint.size())
+		{
+			program.Stages = program.Stages | (UINT)ShaderStage::Vertex;
+
+			ComPtr<ID3DBlob> blob = CompileShader(shaderContent, entryPoint, "vs_5_0");
+			ASSERT_HR(Platform::GPU::Device()->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, program.Vertex.GetAddressOf()));
+		
+			D3D11_INPUT_ELEMENT_DESC inputElements[] = {
+				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+			};
+			const int elementCount = sizeof(inputElements) / sizeof(inputElements[0]);
+			ASSERT_HR(Platform::GPU::Device()->CreateInputLayout(inputElements, elementCount, blob->GetBufferPointer(), blob->GetBufferSize(), program.InputLayout.GetAddressOf()));
+		}
+
+		/**
+		* Compile pixel shader if found
+		*/
+
+		entryPoint = FindEntryPoint(shaderContent, "PIXEL_MAIN");
+		if (entryPoint.size())
+		{
+			program.Stages = program.Stages | (UINT)ShaderStage::Pixel;
+
+			ComPtr<ID3DBlob> blob = CompileShader(shaderContent, entryPoint, "ps_5_0");
+			ASSERT_HR(Platform::GPU::Device()->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, program.Pixel.GetAddressOf()));
+		}
+
+		ID programID = m_IDCounter++;
+		m_shaderPrograms[programID] = std::make_shared<ShaderProgram>(program);
+
+		return programID;
+	}
+
+	std::shared_ptr<const VertexBuffer> ResourceManager::GetVertexBufferInternal(ID bufferID)
 	{
 		if (m_vertexBuffers.count(bufferID) == 0)
 		{
-			return;
+			return std::shared_ptr<const VertexBuffer>();
 		}
-		VertexBuffer& buffer = m_vertexBuffers[bufferID];
-
-		Platform::GPU::Context()->IASetPrimitiveTopology(buffer.Topology);
-		Platform::GPU::Context()->IASetVertexBuffers(slot, 1, buffer.Buffer.GetAddressOf(), &buffer.VertexStride, &offset);
+		return m_vertexBuffers[bufferID];
 	}
 
-	void ResourceManager::BindIndexBufferInternal(ID bufferID, UINT offset)
+	std::shared_ptr<const IndexBuffer> ResourceManager::GetIndexBufferInternal(ID bufferID)
 	{
 		if (m_indexBuffers.count(bufferID) == 0)
 		{
-			return;
+			return std::shared_ptr<const IndexBuffer>();
 		}
-		IndexBuffer& buffer = m_indexBuffers[bufferID];
-
-		Platform::GPU::Context()->IASetIndexBuffer(buffer.Buffer.Get(), buffer.Format, offset);
+		return m_indexBuffers[bufferID];
 	}
 
-	void ResourceManager::BindConstantBufferInternal(ID bufferID, ShaderStage stage, UINT slot)
+	std::shared_ptr<const ConstantBuffer> ResourceManager::GetConstantBufferInternal(ID bufferID)
 	{
 		if (m_constantBuffers.count(bufferID) == 0)
 		{
-			return;
+			return std::shared_ptr<const ConstantBuffer>();
 		}
-		ConstantBuffer& buffer = m_constantBuffers[bufferID];
-
-		switch (stage)
-		{
-		case ShaderStage::Vertex:
-			Platform::GPU::Context()->VSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
-			break;
-		case ShaderStage::Hull:
-			Platform::GPU::Context()->HSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
-			break;
-		case ShaderStage::Domain:
-			Platform::GPU::Context()->DSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
-			break;
-		case ShaderStage::Geometry:
-			Platform::GPU::Context()->GSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
-			break;
-		case ShaderStage::Pixel:
-			Platform::GPU::Context()->PSSetConstantBuffers(slot, 1, buffer.Buffer.GetAddressOf());
-			break;
-		}
+		return m_constantBuffers[bufferID];
 	}
 
-	void ResourceManager::BindShaderResourceInternal(ID textureID, ShaderStage stage, UINT slot)
+	std::shared_ptr<const Texture2D> ResourceManager::GetTexture2DInternal(ID textureID)
 	{
 		if (m_textures.count(textureID) == 0)
 		{
-			return;
+			return std::shared_ptr<const Texture2D>();
 		}
-		Texture2D& texture = m_textures[textureID];
-
-		switch (stage)
-		{
-		case ShaderStage::Vertex:
-			Platform::GPU::Context()->VSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
-			break;
-		case ShaderStage::Hull:
-			Platform::GPU::Context()->HSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
-			break;
-		case ShaderStage::Domain:
-			Platform::GPU::Context()->DSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
-			break;
-		case ShaderStage::Geometry:
-			Platform::GPU::Context()->GSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
-			break;
-		case ShaderStage::Pixel:
-			Platform::GPU::Context()->PSSetShaderResources(slot, 1, texture.SRV.GetAddressOf());
-			break;
-		}
+		return m_textures[textureID];
 	}
 
-	void ResourceManager::BindSamplerInternal(ID samplerID, ShaderStage stage, UINT slot)
+	std::shared_ptr<const Sampler> ResourceManager::GetSamplerInternal(ID samplerID)
 	{
 		if (m_samplers.count(samplerID) == 0)
 		{
-			return;
+			return std::shared_ptr<const Sampler>();
 		}
-		Sampler& sampler = m_samplers[samplerID];
+		return m_samplers[samplerID];
+	}
 
-		switch (stage)
+	std::shared_ptr<const ShaderProgram> ResourceManager::GetShaderProgramInternal(ID programID)
+	{
+		if (m_shaderPrograms.count(programID) == 0)
 		{
-		case ShaderStage::Vertex:
-			Platform::GPU::Context()->VSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
-			break;
-		case ShaderStage::Hull:
-			Platform::GPU::Context()->HSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
-			break;
-		case ShaderStage::Domain:
-			Platform::GPU::Context()->DSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
-			break;
-		case ShaderStage::Geometry:
-			Platform::GPU::Context()->GSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
-			break;
-		case ShaderStage::Pixel:
-			Platform::GPU::Context()->PSSetSamplers(slot, 1, sampler.SamplerState.GetAddressOf());
-			break;
+			return std::shared_ptr<const ShaderProgram>();
 		}
+		return m_shaderPrograms[programID];
 	}
 
-	void ResourceManager::UploadConstantBufferInternal(ID bufferID, const void* data, size_t size)
+	std::string ResourceManager::FindEntryPoint(const std::string& content, const std::string& keyword)
 	{
-		if (m_constantBuffers.count(bufferID) == 0)
+		auto startLocation = content.find(keyword);
+		
+		if (startLocation == std::string::npos)
 		{
-			return;
+			return std::string();
 		}
 
-		ConstantBuffer& buffer = m_constantBuffers[bufferID];
-		buffer.Upload(data, size);
+		auto nameBegin = content.begin() + startLocation + keyword.size() + 1;
+		auto nameEnd = std::find_if(
+			nameBegin,
+			content.end(),
+			[](char c) { return std::isspace(c); });
+
+		std::string entryName(nameBegin, nameEnd);
+
+		return entryName;
 	}
 
-	void ResourceManager::BindDefaultShaderProgramInternal()
+	ComPtr<ID3DBlob> ResourceManager::CompileShader(const std::string& src, const std::string& entryPoint, const std::string& shaderModel)
 	{
-		m_defaultShaderProgram.Bind();
-	}
+		ComPtr<ID3DBlob> blob;
+		ComPtr<ID3DBlob> errorBlob;
+		HRESULT hr = D3DCompile(src.c_str(), src.size(), NULL, NULL, NULL, entryPoint.c_str(), shaderModel.c_str(), NULL, NULL, blob.GetAddressOf(), errorBlob.GetAddressOf());
+		if (FAILED(hr))
+		{
+			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+			ASSERT_HR(hr);
+			return ComPtr<ID3DBlob>();
+		}
 
-	void ResourceManager::BindCameraInternal(const Camera& camera)
-	{
-		using namespace DirectX;
-
-		XMMATRIX xmView;
-		XMMATRIX xmProjection;
-
-		XMVECTOR xmPosition = XMLoadFloat3(&camera.Position);
-		XMVECTOR xmForward = XMLoadFloat3(&camera.Forward);
-		XMVECTOR xmUp = XMLoadFloat3(&camera.Up);
-
-		xmView = XMMatrixLookToLH(xmPosition, xmForward, xmUp);
-		xmProjection = XMMatrixPerspectiveFovLH(camera.FOV, camera.AspectRatio, camera.NearZ, camera.FarZ);
-
-		CameraBuffer buffer;
-		XMStoreFloat4x4(&buffer.View, XMMatrixTranspose(xmView));
-		XMStoreFloat4x4(&buffer.Projection, XMMatrixTranspose(xmProjection));
-		buffer.Position = camera.Position;
-
-		m_cameraBuffer.Upload(&buffer, sizeof(buffer));
-
-		Platform::GPU::Context()->VSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
-		Platform::GPU::Context()->PSSetConstantBuffers(2, 1, m_cameraBuffer.Buffer.GetAddressOf());
+		return blob;
 	}
 }
