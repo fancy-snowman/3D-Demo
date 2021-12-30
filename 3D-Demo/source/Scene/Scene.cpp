@@ -95,8 +95,7 @@ void Scene::Setup()
 
 	ID sampler = Resource::Manager::CreateSampler(samplerDesc);
 
-	//Resource::Manager::BindSampler(sampler, Resource::ShaderStage::Pixel, 0);
-	m_commandBuffer.BindSampler(sampler, (UINT)Resource::ShaderStage::Pixel, 0);
+	m_commandBuffer.BindSampler(sampler, SHADER_STAGE_PIXEL, 0);
 }
 
 void Scene::Update(float delta)
@@ -200,12 +199,12 @@ void Scene::Draw()
 			cameraBuffer.Projection = camera.GetProjectionMatrixTransposed();
 			
 			m_commandBuffer.UpdateConstantBuffer(m_cameraBuffer, &cameraBuffer, sizeof(CameraBuffer));
-			m_commandBuffer.BindConstantBuffer(m_cameraBuffer, (UINT)Resource::ShaderStage::Vertex | (UINT)Resource::ShaderStage::Pixel, 2);
+			m_commandBuffer.BindConstantBuffer(m_cameraBuffer, SHADER_STAGE_VERTEX | SHADER_STAGE_PIXEL, 2);
 		}
 	}
 
 	m_commandBuffer.UpdateConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
-	m_commandBuffer.BindConstantBuffer(m_lightBuffer, (UINT)Resource::ShaderStage::Pixel, 3);
+	m_commandBuffer.BindConstantBuffer(m_lightBuffer, SHADER_STAGE_PIXEL, 3);
 
 	auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
 
@@ -214,7 +213,7 @@ void Scene::Draw()
 
 		DirectX::XMFLOAT4X4 worldMatrix = transformComp.GetMatrixTransposed();
 		m_commandBuffer.UpdateConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
-		m_commandBuffer.BindConstantBuffer(m_objectBuffer, (UINT)Resource::ShaderStage::Vertex, 0);
+		m_commandBuffer.BindConstantBuffer(m_objectBuffer, SHADER_STAGE_VERTEX, 0);
 
 		m_commandBuffer.BindVertexBuffer(mesh->VertexBuffer);
 		m_commandBuffer.BindIndexBuffer(mesh->IndexBuffer);
@@ -224,11 +223,11 @@ void Scene::Draw()
 			auto material = Resource::Manager::GetMaterial(sm.Material);
 
 			m_commandBuffer.UpdateConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
-			m_commandBuffer.BindConstantBuffer(m_materialBuffer, (UINT)Resource::ShaderStage::Pixel, 1);
+			m_commandBuffer.BindConstantBuffer(m_materialBuffer, SHADER_STAGE_PIXEL, 1);
 
 			if (material->DiffuseMap)
 			{
-				m_commandBuffer.BindShaderResource(material->DiffuseMap, (UINT)Resource::ShaderStage::Pixel, 0);
+				m_commandBuffer.BindShaderResource(material->DiffuseMap, SHADER_STAGE_PIXEL, 0);
 			}
 
 			m_commandBuffer.DrawIndexed(sm.IndexCount, sm.IndexOffset, 0);

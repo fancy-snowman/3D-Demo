@@ -226,6 +226,6 @@ namespace Resource
 	private:
 
 		std::string FindEntryPoint(const std::string& content, const std::string& keyword);
-		ComPtr<ID3DBlob> CompileShader(const std::string& src, const std::string& entryPoint, const std::string& shaderModel);
+		ComPtr<ID3DBlob> CompileShader(const std::string& src, const std::string& entryPoint, const std::string& shaderModel, const std::string& sourceFile = "");
 	};
 }

@@ -77,15 +77,15 @@ void Graphics::CommandBuffer::BindConstantBuffer(ID bufferID, UINT stages, UINT 
 
 	if (buffer)
 	{
-		if (stages & (UINT)Resource::ShaderStage::Vertex)
+		if (stages & SHADER_STAGE_VERTEX)
 			Platform::GPU::Context()->VSSetConstantBuffers(slot, 1, buffer->Buffer.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Hull)
+		if (stages & SHADER_STAGE_HULL)
 			Platform::GPU::Context()->HSSetConstantBuffers(slot, 1, buffer->Buffer.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Domain)
+		if (stages & SHADER_STAGE_DOMAIN)
 			Platform::GPU::Context()->DSSetConstantBuffers(slot, 1, buffer->Buffer.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Geometry)
+		if (stages & SHADER_STAGE_GEOMETRY)
 			Platform::GPU::Context()->GSSetConstantBuffers(slot, 1, buffer->Buffer.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Pixel)
+		if (stages & SHADER_STAGE_PIXEL)
 			Platform::GPU::Context()->PSSetConstantBuffers(slot, 1, buffer->Buffer.GetAddressOf());
 	}
 }
@@ -96,15 +96,15 @@ void Graphics::CommandBuffer::BindShaderResource(ID textureID, UINT stages, UINT
 
 	if (texture)
 	{
-		if (stages & (UINT)Resource::ShaderStage::Vertex)
+		if (stages & SHADER_STAGE_VERTEX)
 			Platform::GPU::Context()->VSSetShaderResources(slot, 1, texture->SRV.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Hull)
+		if (stages & SHADER_STAGE_HULL)
 			Platform::GPU::Context()->HSSetShaderResources(slot, 1, texture->SRV.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Domain)
+		if (stages & SHADER_STAGE_DOMAIN)
 			Platform::GPU::Context()->DSSetShaderResources(slot, 1, texture->SRV.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Geometry)
+		if (stages & SHADER_STAGE_GEOMETRY)
 			Platform::GPU::Context()->GSSetShaderResources(slot, 1, texture->SRV.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Pixel)
+		if (stages & SHADER_STAGE_PIXEL)
 			Platform::GPU::Context()->PSSetShaderResources(slot, 1, texture->SRV.GetAddressOf());
 	}
 }
@@ -115,15 +115,15 @@ void Graphics::CommandBuffer::BindSampler(ID samplerID, UINT stages, UINT slot)
 
 	if (sampler)
 	{
-		if (stages & (UINT)Resource::ShaderStage::Vertex)
+		if (stages & SHADER_STAGE_VERTEX)
 			Platform::GPU::Context()->VSSetSamplers(slot, 1, sampler->SamplerState.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Hull)
+		if (stages & SHADER_STAGE_HULL)
 			Platform::GPU::Context()->HSSetSamplers(slot, 1, sampler->SamplerState.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Domain)
+		if (stages & SHADER_STAGE_DOMAIN)
 			Platform::GPU::Context()->DSSetSamplers(slot, 1, sampler->SamplerState.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Geometry)
+		if (stages & SHADER_STAGE_GEOMETRY)
 			Platform::GPU::Context()->GSSetSamplers(slot, 1, sampler->SamplerState.GetAddressOf());
-		if (stages & (UINT)Resource::ShaderStage::Pixel)
+		if (stages & SHADER_STAGE_PIXEL)
 			Platform::GPU::Context()->PSSetSamplers(slot, 1, sampler->SamplerState.GetAddressOf());
 	}
 }

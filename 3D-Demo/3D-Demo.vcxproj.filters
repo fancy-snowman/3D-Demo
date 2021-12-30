@@ -117,6 +117,7 @@
   <ItemGroup>
     <None Include="models\cube\cube_material.mtl" />
     <None Include="models\sponza\sponza.mtl" />
+    <None Include="assets\shaders\ShaderLib.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="assets\shaders\DefaultShaderProgram.hlsl" />

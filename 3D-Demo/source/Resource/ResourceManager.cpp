@@ -711,9 +711,9 @@ PS_OUT main(PS_IN input)
 		entryPoint = FindEntryPoint(shaderContent, "VERTEX_MAIN");
 		if (entryPoint.size())
 		{
-			program.Stages = program.Stages | (UINT)ShaderStage::Vertex;
+			program.Stages = program.Stages | SHADER_STAGE_VERTEX;
 
-			ComPtr<ID3DBlob> blob = CompileShader(shaderContent, entryPoint, "vs_5_0");
+			ComPtr<ID3DBlob> blob = CompileShader(shaderContent, entryPoint, "vs_5_0", filePath);
 			ASSERT_HR(Platform::GPU::Device()->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, program.Vertex.GetAddressOf()));
 		
 			D3D11_INPUT_ELEMENT_DESC inputElements[] = {
@@ -732,9 +732,9 @@ PS_OUT main(PS_IN input)
 		entryPoint = FindEntryPoint(shaderContent, "PIXEL_MAIN");
 		if (entryPoint.size())
 		{
-			program.Stages = program.Stages | (UINT)ShaderStage::Pixel;
+			program.Stages = program.Stages | SHADER_STAGE_PIXEL;
 
-			ComPtr<ID3DBlob> blob = CompileShader(shaderContent, entryPoint, "ps_5_0");
+			ComPtr<ID3DBlob> blob = CompileShader(shaderContent, entryPoint, "ps_5_0", filePath);
 			ASSERT_HR(Platform::GPU::Device()->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, program.Pixel.GetAddressOf()));
 		}
 
@@ -818,11 +818,11 @@ PS_OUT main(PS_IN input)
 		return entryName;
 	}
 
-	ComPtr<ID3DBlob> ResourceManager::CompileShader(const std::string& src, const std::string& entryPoint, const std::string& shaderModel)
+	ComPtr<ID3DBlob> ResourceManager::CompileShader(const std::string& src, const std::string& entryPoint, const std::string& shaderModel, const std::string& sourceFile)
 	{
 		ComPtr<ID3DBlob> blob;
 		ComPtr<ID3DBlob> errorBlob;
-		HRESULT hr = D3DCompile(src.c_str(), src.size(), NULL, NULL, NULL, entryPoint.c_str(), shaderModel.c_str(), NULL, NULL, blob.GetAddressOf(), errorBlob.GetAddressOf());
+		HRESULT hr = D3DCompile(src.c_str(), src.size(), sourceFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, entryPoint.c_str(), shaderModel.c_str(), NULL, NULL, blob.GetAddressOf(), errorBlob.GetAddressOf());
 		if (FAILED(hr))
 		{
 			OutputDebugStringA((char*)errorBlob->GetBufferPointer());

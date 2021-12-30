@@ -1,17 +1,14 @@
 #pragma once
 #include "pch.h"
 
+constexpr UINT SHADER_STAGE_VERTEX = 0x1 << 1;
+constexpr UINT SHADER_STAGE_HULL = 0x1 << 1;
+constexpr UINT SHADER_STAGE_DOMAIN = 0x1 << 2;
+constexpr UINT SHADER_STAGE_GEOMETRY = 0x1 << 3;
+constexpr UINT SHADER_STAGE_PIXEL = 0x1 << 4;
+
 namespace Resource
 {
-	enum class ShaderStage
-	{
-		Vertex = 0x1 << 0,
-		Hull = 0x1 << 1,
-		Domain = 0x1 << 2,
-		Geometry = 0x1 << 3,
-		Pixel = 0x1 << 4,
-	};
-
 	struct ShaderProgram
 	{
 		ComPtr<ID3D11InputLayout> InputLayout;
