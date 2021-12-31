@@ -110,6 +110,9 @@
     <ClInclude Include="include\Graphics\CommandBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Resource\ShaderBuffers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Object Include="models\cube\cube.obj" />

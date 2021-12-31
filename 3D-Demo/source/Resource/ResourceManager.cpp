@@ -9,142 +9,6 @@ namespace Resource
 {
 	std::unique_ptr<ResourceManager> ResourceManager::s_instance;
 
-	const std::string shaderHeaderSrc = R"(
-
-cbuffer ObjectBuffer : register (b0)
-{
-	struct
-	{
-		float4x4 World;
-	} Object;
-}
-
-cbuffer MaterialBuffer : register (b1)
-{
-	struct
-	{
-		float3 Diffuse;
-		int DiffuseMapIndex;
-		float3 Specular;
-		int SpecularMapIndex;
-		float3 Ambient;
-		int AmbientMapIndex;
-		float SpecularExponent;
-		float3 Padding;
-	} Material;
-}
-
-cbuffer CameraBuffer : register (b2)
-{
-	struct
-	{
-		float4x4 View;
-		float4x4 Projection;
-		float3 Position;
-		float Padding;
-	} Camera;
-}
-
-cbuffer LightBuffer : register (b3)
-{
-	struct 
-	{
-		float3 Position;
-		float Radius;
-		float3 Color;
-		float Padding;
-	} Light;
-}
-
-Texture2D<float4> MaterialDiffuseMap : register (t0);
-SamplerState defaultSampler : register (s0);
-
-struct VS_IN
-{
-	float3 Position : POSITION;
-	float3 Normal : NORMAL;
-	float2 Texcoord : TEXCOORD;
-};   
-
-struct PS_IN
-{
-	float4 NDC : SV_POSITION;
-	float3 Position : POSITION;
-	float3 Normal : NORMAL;
-	float2 Texcoord : TEXCOORD;
-};
-
-struct PS_OUT
-{
-	float4 Color : SV_TARGET;
-};
-)";
-
-	const std::string defaultVertexShaderSrc = shaderHeaderSrc + R"(
-PS_IN main(VS_IN input)
-{
-	PS_IN output;
-
-	float4 position = float4(input.Position, 1.0f);
-	position = mul(position, Object.World);
-	output.Position = position;
-	position = mul(position, Camera.View);
-	position = mul(position, Camera.Projection);
-	output.NDC = position;
-
-	float4 normal = float4(input.Normal, 0.0f);
-	normal = mul(normal, Object.World);
-	output.Normal = normalize(normal.xyz);
-
-	output.Texcoord = input.Texcoord;
-
-	return output;
-})";
-
-	const std::string defaultPixelShaderSrc = shaderHeaderSrc + R"(
-PS_OUT main(PS_IN input)
-{
-	struct LightGeneral
-	{
-		float3 Ambient;
-	} lightGeneral;
-	lightGeneral.Ambient = float3(0.1f, 0.1f, 0.1f);
-
-	struct LightSpecific
-	{
-		float3 Diffuse;
-		float3 Specular;
-	} lightSpecific;
-	lightSpecific.Diffuse = float3(0.6f, 0.6f, 0.6f);
-	lightSpecific.Specular = float3(0.8f, 0.8f, 0.8f);
-
-	PS_OUT output;
-
-	float3 lightDir = normalize(Light.Position - input.Position);
-	float3 lightReflect = normalize(reflect(lightDir * -1.0f, input.Normal));
-	float3 eyeDir = normalize(Camera.Position - input.Position);
-
-	float3 diffuse = Material.Diffuse;
-	
-	if (Material.DiffuseMapIndex != -1)
-	{
-		diffuse = MaterialDiffuseMap.Sample(defaultSampler, input.Texcoord).xyz;
-	}
-	
-	float3 ambientComponent = Material.Ambient * lightGeneral.Ambient;
-	float3 diffuseComponent = diffuse * max(0.0f, dot(lightDir, input.Normal)) * lightSpecific.Diffuse;
-	float3 specularComponent = Material.Specular * pow(max(0.0f, dot(lightReflect, eyeDir)), Material.SpecularExponent) * lightSpecific.Specular;
-
-	float3 final = float3(0.0f, 0.0f, 0.0f);
-	final += ambientComponent;
-	final += diffuseComponent;
-	final += specularComponent;
-
-	output.Color = float4(final, 1.0f);
-
-	return output;
-})";
-
 	void ResourceManager::Initialize()
 	{
 		if (!s_instance)
@@ -160,38 +24,6 @@ PS_OUT main(PS_IN input)
 
 	ResourceManager::ResourceManager() : m_IDCounter(1)
 	{
-		// Create the default shader program
-		{
-			HRESULT hr = S_OK;
-			ComPtr<ID3DBlob> errorBlob;
-
-			ComPtr<ID3DBlob> vertexBlob;
-			hr = D3DCompile(defaultVertexShaderSrc.c_str(), defaultVertexShaderSrc.size(), NULL, NULL, NULL, "main", "vs_5_0", NULL, NULL, vertexBlob.GetAddressOf(), errorBlob.GetAddressOf());
-			if (FAILED(hr))
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				ASSERT_HR(hr);
-			}
-			ASSERT_HR(Platform::GPU::Device()->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), NULL, m_defaultShaderProgram.Vertex.GetAddressOf()));
-
-			ComPtr<ID3DBlob> pixelBlob;
-			hr = D3DCompile(defaultPixelShaderSrc.c_str(), defaultPixelShaderSrc.size(), NULL, NULL, NULL, "main", "ps_5_0", NULL, NULL, pixelBlob.GetAddressOf(), errorBlob.GetAddressOf());
-			if (FAILED(hr))
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				ASSERT_HR(hr);
-			}
-			ASSERT_HR(Platform::GPU::Device()->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), NULL, m_defaultShaderProgram.Pixel.GetAddressOf()));
-
-			D3D11_INPUT_ELEMENT_DESC inputElements[] = {
-				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-				{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-				{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-			};
-			const int elementCount = sizeof(inputElements) / sizeof(inputElements[0]);
-			ASSERT_HR(Platform::GPU::Device()->CreateInputLayout(inputElements, elementCount, vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), m_defaultShaderProgram.InputLayout.GetAddressOf()));
-		}
-
 		// Create the camera constant buffer
 		{
 			m_cameraBuffer.ByteWidth = sizeof(CameraBuffer);
@@ -708,7 +540,7 @@ PS_OUT main(PS_IN input)
 		* Compile vertex shader if found
 		*/
 
-		entryPoint = FindEntryPoint(shaderContent, "VERTEX_MAIN");
+		entryPoint = FindEntryPoint(shaderContent, "ENTRY_VERTEX");
 		if (entryPoint.size())
 		{
 			program.Stages = program.Stages | SHADER_STAGE_VERTEX;
@@ -729,7 +561,7 @@ PS_OUT main(PS_IN input)
 		* Compile pixel shader if found
 		*/
 
-		entryPoint = FindEntryPoint(shaderContent, "PIXEL_MAIN");
+		entryPoint = FindEntryPoint(shaderContent, "ENTRY_PIXEL");
 		if (entryPoint.size())
 		{
 			program.Stages = program.Stages | SHADER_STAGE_PIXEL;

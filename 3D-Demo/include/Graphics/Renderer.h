@@ -1,5 +1,7 @@
 #pragma once
 #include "pch.h"
+#include "Graphics/CommandBuffer.h"
+#include "Resource/Resource.h"
 
 /**
  *	1. GBufferPass		Opaque geometry
@@ -24,6 +26,26 @@ namespace Graphics
 		static void Initialize();
 		static void Finalize();
 
+	public:
+
+		static inline void BeginFrame(const Resource::Camera& camera, const Resource::Transform& cameraTransform)
+		{
+			if (!s_instance) { Initialize(); }
+			s_instance->BeginFrameInternal(camera, cameraTransform);
+		}
+
+		static inline void Submit(ID meshID, UINT indexOffset, UINT indexCount, const Resource::Material& material, const Resource::Transform& transform)
+		{
+			if (!s_instance) { Initialize(); }
+			s_instance->SubmitInternal(meshID, indexOffset, indexCount, material, transform);
+		}
+
+		static inline void EndFrame()
+		{
+			if (!s_instance) { Initialize(); }
+			s_instance->EndFrameInternal();
+		}
+
 	private:
 
 		static std::unique_ptr<Renderer> s_instance;
@@ -42,6 +64,23 @@ namespace Graphics
 
 	private:
 
-		// Custom members ...
+		ID m_objectBuffer;
+		ID m_materialBuffer;
+		ID m_cameraBuffer;
+		ID m_defaultShader;
+
+		Graphics::CommandBuffer m_commandBuffer;
+
+	private:
+
+		// Temp stuff...
+		ID m_lightBuffer;
+		Resource::PointLight m_pointLight;
+
+	private:
+
+		void BeginFrameInternal(const Resource::Camera& camera, const Resource::Transform& cameraTransform);
+		void SubmitInternal(ID meshID, UINT indexOffset, UINT indexCount, const Resource::Material& material, const Resource::Transform& transform);
+		void EndFrameInternal();
 	};
 }

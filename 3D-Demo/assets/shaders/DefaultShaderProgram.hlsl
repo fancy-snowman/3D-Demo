@@ -1,5 +1,5 @@
-//#define VERTEX_MAIN VS_main
-//#define PIXEL_MAIN PS_main
+//#define ENTRY_VERTEX VS_main
+//#define ENTRY_PIXEL PS_main
 
 #include "ShaderLib.hlsli"
 
