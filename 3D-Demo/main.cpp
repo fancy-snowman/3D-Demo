@@ -6,9 +6,7 @@
 #include <chrono>
 
 int main()
-{
-	Resource::Window window(800, 600);
-	
+{	
 	Scene scene;
 	scene.Setup();
 
@@ -19,7 +17,7 @@ int main()
 
 	const Clock::duration TARGET_DELTA = std::chrono::microseconds(16667); // 16.667 ms -> 60 fps
 
-	while (window.Process())
+	while (true) // temp
 	{
 		now = Clock::now();
 		elapsed += now - then;
@@ -29,14 +27,10 @@ int main()
 		{
 			elapsed -= TARGET_DELTA;
 
-			window.Bind();
-			window.Clear(0.2f, 0.3f, 0.4f);
-
 			float delta = TARGET_DELTA.count() / 1000000000.f;
 
 			scene.Update(delta);
 			scene.Draw();
-			window.Present();
 		}
 	}
 

@@ -25,8 +25,11 @@ using Microsoft::WRL::ComPtr;
 #include "entt/entt.hpp"
 
 #define ID int
+#define EntityID entt::entity
 
 #define ASSERT_HR(hr) assert(SUCCEEDED(hr))
 #define ZERO_MEMORY(obj) ZeroMemory(&obj, sizeof(obj))
 
 #define ALIGN_TO(value, align) (value + align-1) & ~(align-1)
+
+using WindowProcedureFunction = std::function<LRESULT(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)>;

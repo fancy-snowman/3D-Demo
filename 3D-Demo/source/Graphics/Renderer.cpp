@@ -60,6 +60,16 @@ namespace Graphics
 
 	void Renderer::BeginFrameInternal(const Resource::Camera& camera, const Resource::Transform& cameraTransform)
 	{
+		{
+			m_commandBuffer.ClearRenderTarget(camera.ColorTextureID, { 0.2f, 0.3f, 0.4f });
+			m_commandBuffer.ClearDepthStencil(camera.DepthTextureID);
+			m_commandBuffer.BindRenderTarget(camera.ColorTextureID, 0, camera.DepthTextureID);
+		}
+
+		{
+			m_commandBuffer.BindViewPort(camera.GetViewPort());
+		}
+
 		Resource::CameraBufferData cameraBufferData;
 
 		{

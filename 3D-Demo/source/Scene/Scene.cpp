@@ -17,15 +17,28 @@ Scene::~Scene()
 
 void Scene::Setup()
 {
+	ID windowID = Resource::Manager::CreateAppWindow(800, 600, "THIS IS WINDOW");
+	auto window = Resource::Manager::GetWindow(windowID);
+
+	RECT rect;
+	GetWindowRect(window->NativeWindow, &rect);
+
+	{
+		// Setup window (temp solution)
+		m_mainWindow = m_registry->create();
+		m_registry->emplace<Component::WindowComponent>(m_mainWindow, windowID);
+	}
+
 	{
 		// Setup camera
 
 		Component::CameraComponent cameraSettings;
-		cameraSettings.AspectRatio = 800.f / 600.f;
+		cameraSettings.AspectRatio = window->GetAspect();
 		cameraSettings.NearPlane = 0.1f;
 		cameraSettings.FarPlane = 1000.f;
 		cameraSettings.FOV = DirectX::XM_PI / 2.f;
-		cameraSettings.Target = { 0.f, 0.f, 1.f };
+		cameraSettings.ColorTextureID = window->TextureID;
+		cameraSettings.DepthTextureID = Resource::Manager::CreateDepthTexture(window->GetWidth(), window->GetHeight());
 
 		Component::CameraControllerFPS cameraController;
 
@@ -59,79 +72,81 @@ void Scene::Update(float delta)
 {
 	elapsed += delta * 0.5f;
 
-	auto view = m_registry->view<Component::CameraComponent, Component::CameraControllerFPS, Component::TransformComponent>();
+	{
+		auto& windowComp = m_registry->get<Component::WindowComponent>(m_mainWindow);
+		auto window = Resource::Manager::GetWindow(windowComp.WindowID);
+		window->Process();
+	}
 
-	view.each([](auto entity, const Component::CameraComponent& camera, const Component::CameraControllerFPS& controller, Component::TransformComponent& transform) {
 
-		using namespace DirectX;
+	{
+		auto view = m_registry->view<Component::CameraComponent, Component::CameraControllerFPS, Component::TransformComponent>();
+		view.each([](auto entity, const Component::CameraComponent& camera, const Component::CameraControllerFPS& controller, Component::TransformComponent& transform) {
 
-		XMVECTOR position = XMLoadFloat3(&transform.Position);
+			using namespace DirectX;
 
-		XMVECTOR forward;
-		XMVECTOR right;
-		XMVECTOR up;
-		{
-			XMFLOAT4X4 worldMatrixFloat = transform.GetMatrix();
+			XMVECTOR position = XMLoadFloat3(&transform.Position);
 
-			forward = XMVector3Normalize({ worldMatrixFloat._31, worldMatrixFloat._32, worldMatrixFloat._33, 0.f });
-			right = XMVector3Normalize({ worldMatrixFloat._11, worldMatrixFloat._12, worldMatrixFloat._13, 0.f });
-			up = XMVector3Normalize({ worldMatrixFloat._21, worldMatrixFloat._22, worldMatrixFloat._23, 0.f });
-		}
+			XMVECTOR forward;
+			XMVECTOR right;
+			XMVECTOR up;
+			{
+				XMFLOAT4X4 worldMatrixFloat = transform.GetMatrix();
 
-		XMVECTOR movement = { 0, 0, 0, 0 };
+				forward = XMVector3Normalize({ worldMatrixFloat._31, worldMatrixFloat._32, worldMatrixFloat._33, 0.f });
+				right = XMVector3Normalize({ worldMatrixFloat._11, worldMatrixFloat._12, worldMatrixFloat._13, 0.f });
+				up = XMVector3Normalize({ worldMatrixFloat._21, worldMatrixFloat._22, worldMatrixFloat._23, 0.f });
+			}
 
-		if (controller.MoveForwardKey && GetAsyncKeyState(controller.MoveForwardKey))
-			movement += forward * controller.Speed;
-		if (controller.MoveLeftKey && GetAsyncKeyState(controller.MoveLeftKey))
-			movement -= right * controller.Speed;
-		if (controller.MoveBackwardKey && GetAsyncKeyState(controller.MoveBackwardKey))
-			movement -= forward * controller.Speed;
-		if (controller.MoveRightKey && GetAsyncKeyState(controller.MoveRightKey))
-			movement += right * controller.Speed;
-		if (controller.MoveUpKey && GetAsyncKeyState(controller.MoveUpKey))
-			movement += up * controller.Speed;
-		if (controller.MoveDownKey && GetAsyncKeyState(controller.MoveDownKey))
-			movement -= up * controller.Speed;
+			XMVECTOR movement = { 0, 0, 0, 0 };
 
-		movement = XMVector3Normalize(movement);
+			if (controller.MoveForwardKey && GetAsyncKeyState(controller.MoveForwardKey))
+				movement += forward * controller.Speed;
+			if (controller.MoveLeftKey && GetAsyncKeyState(controller.MoveLeftKey))
+				movement -= right * controller.Speed;
+			if (controller.MoveBackwardKey && GetAsyncKeyState(controller.MoveBackwardKey))
+				movement -= forward * controller.Speed;
+			if (controller.MoveRightKey && GetAsyncKeyState(controller.MoveRightKey))
+				movement += right * controller.Speed;
+			if (controller.MoveUpKey && GetAsyncKeyState(controller.MoveUpKey))
+				movement += up * controller.Speed;
+			if (controller.MoveDownKey && GetAsyncKeyState(controller.MoveDownKey))
+				movement -= up * controller.Speed;
 
-		if (GetAsyncKeyState(VK_SHIFT))
-			movement *= 2.f;
+			movement = XMVector3Normalize(movement);
 
-		position += movement;
+			if (GetAsyncKeyState(VK_SHIFT))
+				movement *= 2.f;
 
-		XMStoreFloat3(&transform.Position, position);
+			position += movement;
 
-		float roll = 0;
-		float pitch = 0;
-		float yaw = 0;
+			XMStoreFloat3(&transform.Position, position);
 
-		if (GetAsyncKeyState(VK_LEFT))
-			yaw -= controller.TurnSpeedHorizontal;
-		if (GetAsyncKeyState(VK_RIGHT))
-			yaw += controller.TurnSpeedHorizontal;
-		if (GetAsyncKeyState(VK_UP))
-			pitch -= controller.TurnSpeedVertical;
-		if (GetAsyncKeyState(VK_DOWN))
-			pitch += controller.TurnSpeedVertical;
+			float roll = 0;
+			float pitch = 0;
+			float yaw = 0;
 
-		transform.Rotation.x += pitch;
-		transform.Rotation.y += yaw;
-		transform.Rotation.z += roll;
-	});
+			if (GetAsyncKeyState(VK_LEFT))
+				yaw -= controller.TurnSpeedHorizontal;
+			if (GetAsyncKeyState(VK_RIGHT))
+				yaw += controller.TurnSpeedHorizontal;
+			if (GetAsyncKeyState(VK_UP))
+				pitch -= controller.TurnSpeedVertical;
+			if (GetAsyncKeyState(VK_DOWN))
+				pitch += controller.TurnSpeedVertical;
+
+			transform.Rotation.x += pitch;
+			transform.Rotation.y += yaw;
+			transform.Rotation.z += roll;
+			});
+	}
 }
 
 void Scene::Draw()
 {	
 	{
 		Component::TransformComponent& transformComp = m_registry->get<Component::TransformComponent>(m_mainCamera);
-		Component::CameraComponent& settings = m_registry->get<Component::CameraComponent>(m_mainCamera);
-
-		Resource::Camera camera;
-		camera.NearZ = settings.NearPlane;
-		camera.FarZ = settings.FarPlane;
-		camera.FOV = settings.FOV;
-		camera.AspectRatio = settings.AspectRatio;
+		Component::CameraComponent& camera = m_registry->get<Component::CameraComponent>(m_mainCamera);
 
 		Resource::Transform transform;
 		transform.Position = transformComp.Position;
@@ -160,4 +175,10 @@ void Scene::Draw()
 	});
 
 	Graphics::Renderer::EndFrame();
+
+	{
+		auto& windowComp = m_registry->get<Component::WindowComponent>(m_mainWindow);
+		auto window = Resource::Manager::GetWindow(windowComp.WindowID);
+		window->Present();
+	}
 }

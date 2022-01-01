@@ -6,22 +6,24 @@ namespace Resource
 	struct Camera
 	{
 		float AspectRatio;
-		float NearZ;
-		float FarZ;
+		float NearPlane;
+		float FarPlane;
 		float FOV;
 
-		inline DirectX::XMFLOAT4X4 GetProjectionMatrixTransposed() const
+		struct
 		{
-			using namespace DirectX;
-			XMFLOAT4X4 projection;
-			XMStoreFloat4x4(
-				&projection,
-				XMMatrixTranspose(XMMatrixPerspectiveFovLH(
-					FOV,
-					AspectRatio,
-					NearZ,
-					FarZ)));
-			return projection;
-		}
+			float Top = 0.f;
+			float Left = 0.f;
+			float Right = 1.f;
+			float Bottom = 1.f;
+		} View;
+
+		D3D11_VIEWPORT ViewPort;
+
+		ID ColorTextureID;
+		ID DepthTextureID;
+
+		DirectX::XMFLOAT4X4 GetProjectionMatrixTransposed() const;
+		D3D11_VIEWPORT GetViewPort() const;
 	};
 }

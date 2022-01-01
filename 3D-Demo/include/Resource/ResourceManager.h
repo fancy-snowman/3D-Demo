@@ -77,6 +77,12 @@ namespace Resource
 			return s_instance->LoadTexture2DInternal(filePath);
 		}
 
+		static inline ID CreateAppWindow(UINT width, UINT height, const std::string& title, WindowProcedureFunction windowProc = NULL)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->CreateAppWindowInternal(width, height, title, windowProc);
+		}
+
 		static inline ID CreateVertexBuffer(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
 		{
 			if (!s_instance) { Initialize(); }
@@ -101,6 +107,12 @@ namespace Resource
 			return s_instance->CreateTexture2DInternal(width, height, format, texelStride, initData);
 		}
 
+		static inline ID CreateDepthTexture(UINT width, UINT height, const void* initData = nullptr)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->CreateDepthTextureInternal(width, height, initData);
+		}
+
 		static inline ID CreateSampler(const D3D11_SAMPLER_DESC& description)
 		{
 			if (!s_instance) { Initialize(); }
@@ -111,6 +123,12 @@ namespace Resource
 		{
 			if (!s_instance) { Initialize(); }
 			return s_instance->CreateShaderProgramInternal(filePath);
+		}
+
+		static inline std::shared_ptr<Window> GetWindow(ID windowID)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->GetWindowInternal(windowID);
 		}
 
 		static inline std::shared_ptr<const VertexBuffer> GetVertexBuffer(ID bufferID)
@@ -135,6 +153,12 @@ namespace Resource
 		{
 			if (!s_instance) { Initialize(); }
 			return s_instance->GetTexture2DInternal(textureID);
+		}
+
+		static inline std::shared_ptr<const DepthTexture> GetDepthTexture(ID textureID)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->GetDepthTextureInternal(textureID);
 		}
 
 		static inline std::shared_ptr<const Sampler> GetSampler(ID samplerID)
@@ -173,10 +197,13 @@ namespace Resource
 		std::unordered_map<ID, std::shared_ptr<Material>> m_materials;
 		std::unordered_map<std::string, ID> m_materialNames;
 
+		std::unordered_map<ID, std::shared_ptr<Window>> m_windows;
+
 		std::unordered_map<ID, std::shared_ptr<VertexBuffer>> m_vertexBuffers;
 		std::unordered_map<ID, std::shared_ptr<IndexBuffer>> m_indexBuffers;
 		std::unordered_map<ID, std::shared_ptr<ConstantBuffer>> m_constantBuffers;
 		std::unordered_map<ID, std::shared_ptr<Texture2D>> m_textures;
+		std::unordered_map<ID, std::shared_ptr<DepthTexture>> m_depthTextures;
 		std::unordered_map<ID, std::shared_ptr<Sampler>> m_samplers;
 
 		std::unordered_map<ID, std::shared_ptr<ShaderProgram>> m_shaderPrograms;
@@ -209,17 +236,22 @@ namespace Resource
 		std::vector<ID> LoadMaterialInternal(const std::string& filePath);
 		ID LoadTexture2DInternal(const std::string& filePath);
 
+		ID CreateAppWindowInternal(UINT width, UINT height, const std::string& title, WindowProcedureFunction windowProc);
+		
 		ID CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData);
 		ID CreateIndexBufferInternal(size_t indexCount, DXGI_FORMAT format, const void* initialData);
 		ID CreateConstantBufferInternal(size_t size, const void* initData);
 		ID CreateTexture2DInternal(UINT width, UINT height, DXGI_FORMAT format, UINT texelStride, const void* initData);
+		ID CreateDepthTextureInternal(UINT width, UINT height, const void* initData);
 		ID CreateSamplerInternal(const D3D11_SAMPLER_DESC& description);
 		ID CreateShaderProgramInternal(const std::string& filePath);
 
+		std::shared_ptr<Window> GetWindowInternal(ID windowID);
 		std::shared_ptr<const VertexBuffer> GetVertexBufferInternal(ID bufferID);
 		std::shared_ptr<const IndexBuffer> GetIndexBufferInternal(ID bufferID);
 		std::shared_ptr<const ConstantBuffer> GetConstantBufferInternal(ID bufferID);
 		std::shared_ptr<const Texture2D> GetTexture2DInternal(ID textureID);
+		std::shared_ptr<const DepthTexture> GetDepthTextureInternal(ID textureID);
 		std::shared_ptr<const Sampler> GetSamplerInternal(ID samplerID);
 		std::shared_ptr<const ShaderProgram> GetShaderProgramInternal(ID programID);
 

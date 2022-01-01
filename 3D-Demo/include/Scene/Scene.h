@@ -17,6 +17,8 @@ private:
 
 	float elapsed = 0;
 
-	entt::entity m_mainCamera;
+	EntityID m_mainCamera;
+	EntityID m_mainWindow; // Temp
+
 	std::shared_ptr<entt::registry> m_registry;
 };

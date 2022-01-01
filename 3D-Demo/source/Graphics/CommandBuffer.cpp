@@ -25,9 +25,9 @@ void Graphics::CommandBuffer::ClearRenderTarget(ID textureID, std::array<float, 
 	}
 }
 
-void Graphics::CommandBuffer::ClearDepth(ID textureID, bool clearDepth, bool clearStencil, float depthValue, UINT stencilValue)
+void Graphics::CommandBuffer::ClearDepthStencil(ID textureID, bool clearDepth, bool clearStencil, float depthValue, UINT stencilValue)
 {
-	auto texture = Manager::GetTexture2D(textureID);
+	auto texture = Manager::GetDepthTexture(textureID);
 	if (texture && texture->DSV)
 	{
 		UINT flags = 0;
@@ -90,6 +90,24 @@ void Graphics::CommandBuffer::BindConstantBuffer(ID bufferID, UINT stages, UINT 
 	}
 }
 
+void Graphics::CommandBuffer::BindRenderTarget(ID textureID, UINT slot, ID depthTextureID)
+{
+	auto target = Manager::GetTexture2D(textureID);
+	auto depth = Manager::GetDepthTexture(depthTextureID);
+
+	if (target)
+	{
+		if (depth)
+		{
+			Platform::GPU::Context()->OMSetRenderTargets(1, target->RTV.GetAddressOf(), depth->DSV.Get());
+		}
+		else
+		{
+			Platform::GPU::Context()->OMSetRenderTargets(1, target->RTV.GetAddressOf(), NULL);
+		}
+	}
+}
+
 void Graphics::CommandBuffer::BindShaderResource(ID textureID, UINT stages, UINT slot)
 {
 	auto texture = Manager::GetTexture2D(textureID);
@@ -138,6 +156,11 @@ void Graphics::CommandBuffer::BindShaderProgram(ID programID)
 		GPU::Context()->VSSetShader(shaderProgram->Vertex.Get(), NULL, NULL);
 		GPU::Context()->PSSetShader(shaderProgram->Pixel.Get(), NULL, NULL);
 	}
+}
+
+void Graphics::CommandBuffer::BindViewPort(const D3D11_VIEWPORT& viewPort)
+{
+	GPU::Context()->RSSetViewports(1, &viewPort);
 }
 
 void Graphics::CommandBuffer::DrawIndexed(UINT indexCount, UINT indexOffset, UINT baseVertexLocation)

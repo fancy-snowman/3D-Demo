@@ -385,6 +385,103 @@ namespace Resource
 		return CreateTexture2D(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 4, imageData);
 	}
 
+	ID ResourceManager::CreateAppWindowInternal(UINT width, UINT height, const std::string& title, WindowProcedureFunction windowProc)
+	{
+		auto window = std::make_shared<Window>();
+		Resource::Texture2D windowTexture;
+
+		const std::string CLASS_NAME = "WINDOW_CLASS" + std::to_string(m_IDCounter);
+
+		{ // Register window class
+			WNDCLASS WindowClass = {};
+
+			if (windowProc)
+			{
+				WindowClass.lpfnWndProc = (WNDPROC)&windowProc;
+			}
+			else
+			{
+				WindowClass.lpfnWndProc = [](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+					switch (uMsg)
+					{
+					case WM_DESTROY: // Window x-button is pressed
+						PostQuitMessage(0);
+						return 0;
+					}
+
+					// Must return default if not handled
+					return DefWindowProc(hwnd, uMsg, wParam, lParam);
+				};
+			}
+
+			WindowClass.hInstance = nullptr;
+			WindowClass.lpszClassName = CLASS_NAME.c_str();
+			RegisterClass(&WindowClass);
+		}
+
+		{ // Create window
+			window->NativeWindow = CreateWindowExA(
+				NULL,
+				CLASS_NAME.c_str(),
+				title.c_str(),
+				WS_OVERLAPPEDWINDOW,
+				CW_USEDEFAULT, CW_USEDEFAULT,
+				width, height,
+				NULL,
+				NULL,
+				NULL,
+				NULL
+			);
+			assert(window->NativeWindow);
+			ShowWindow(window->NativeWindow, SW_SHOW);
+		}
+
+		{ // Create swap chain
+			DXGI_SWAP_CHAIN_DESC backBufferDesc = { 0 };
+			backBufferDesc.BufferDesc.Width = width;
+			backBufferDesc.BufferDesc.Height = height;
+			backBufferDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			backBufferDesc.SampleDesc.Count = 1;
+			backBufferDesc.SampleDesc.Quality = 0;
+			backBufferDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_UNORDERED_ACCESS;
+			backBufferDesc.BufferCount = 2;
+			backBufferDesc.OutputWindow = window->NativeWindow;
+			backBufferDesc.Windowed = true;
+			backBufferDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+
+			ComPtr<IDXGIDevice> dxgi_device;
+			ComPtr<IDXGIAdapter> dxgi_adapter;
+			ComPtr<IDXGIFactory> dxgi_factory;
+
+			// Query the underlying factory and use it to create a new swap chain.
+			Platform::GPU::Device()->QueryInterface(IID_PPV_ARGS(dxgi_device.GetAddressOf()));
+			dxgi_device->GetAdapter(dxgi_adapter.GetAddressOf());
+			dxgi_adapter->GetParent(IID_PPV_ARGS(dxgi_factory.GetAddressOf()));
+			ASSERT_HR(dxgi_factory->CreateSwapChain(Platform::GPU::Device().Get(), &backBufferDesc, window->SwapChain.GetAddressOf()));
+		}
+
+		{ // Create window texture
+			windowTexture.Height = height;
+			windowTexture.Width = width;
+			windowTexture.TexelStride = 4; // 32-bit, four channels, 8-bit per channel
+			windowTexture.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+			window->SwapChain->GetBuffer(0, IID_PPV_ARGS(windowTexture.Texture.GetAddressOf()));
+			ASSERT_HR(Platform::GPU::Device()->CreateRenderTargetView(windowTexture.Texture.Get(), NULL, windowTexture.RTV.GetAddressOf()));
+			ASSERT_HR(Platform::GPU::Device()->CreateShaderResourceView(windowTexture.Texture.Get(), NULL, windowTexture.SRV.GetAddressOf()));
+			ASSERT_HR(Platform::GPU::Device()->CreateUnorderedAccessView(windowTexture.Texture.Get(), NULL, windowTexture.UAV.GetAddressOf()));
+
+			window->TextureID = m_IDCounter++;
+			m_textures[window->TextureID] = std::make_shared<Resource::Texture2D>(windowTexture);
+		}
+
+
+		ID windowID = m_IDCounter++;
+		m_windows[windowID] = window;
+
+		return windowID;
+	}
+
 	ID ResourceManager::CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData)
 	{
 		VertexBuffer buffer;
@@ -483,7 +580,7 @@ namespace Resource
 		textureDesc.Format = format;
 		textureDesc.SampleDesc.Count = 1;
 		textureDesc.Usage = D3D11_USAGE_DEFAULT;
-		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS;
+		textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
 		//textureDesc.CPUAccessFlags;
 		//textureDesc.MiscFlags;
 
@@ -500,12 +597,69 @@ namespace Resource
 			ASSERT_HR(Platform::GPU::Device()->CreateTexture2D(&textureDesc, NULL, texture.Texture.GetAddressOf()));
 		}
 
-		ASSERT_HR(Platform::GPU::Device()->CreateShaderResourceView(texture.Texture.Get(), NULL, texture.SRV.GetAddressOf()));
 		ASSERT_HR(Platform::GPU::Device()->CreateRenderTargetView(texture.Texture.Get(), NULL, texture.RTV.GetAddressOf()));
+		ASSERT_HR(Platform::GPU::Device()->CreateShaderResourceView(texture.Texture.Get(), NULL, texture.SRV.GetAddressOf()));
 		ASSERT_HR(Platform::GPU::Device()->CreateUnorderedAccessView(texture.Texture.Get(), NULL, texture.UAV.GetAddressOf()));
 
 		ID textureID = m_IDCounter++;
 		m_textures[textureID] = std::make_shared<Texture2D>(texture);
+
+		return textureID;
+	}
+
+	ID ResourceManager::CreateDepthTextureInternal(UINT width, UINT height, const void* initData)
+	{
+		Resource::DepthTexture texture;
+
+		texture.Width = width;
+		texture.Height = height;
+		texture.Format = DXGI_FORMAT_R32_TYPELESS;
+		texture.TexelStride = 4; // 32-bit
+
+		D3D11_TEXTURE2D_DESC textureDesc;
+		ZERO_MEMORY(textureDesc);
+		textureDesc.Width = width;
+		textureDesc.Height = height;
+		textureDesc.MipLevels = 1;
+		textureDesc.ArraySize = 1;
+		textureDesc.Format = texture.Format;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.Usage = D3D11_USAGE_DEFAULT;
+		textureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		//textureDesc.CPUAccessFlags;
+		//textureDesc.MiscFlags;
+
+		if (initData)
+		{
+			D3D11_SUBRESOURCE_DATA data;
+			ZERO_MEMORY(data);
+			data.pSysMem = initData;
+			data.SysMemPitch = texture.TexelStride * width;
+			ASSERT_HR(Platform::GPU::Device()->CreateTexture2D(&textureDesc, &data, texture.Texture.GetAddressOf()));
+		}
+		else
+		{
+			ASSERT_HR(Platform::GPU::Device()->CreateTexture2D(&textureDesc, NULL, texture.Texture.GetAddressOf()));
+		}
+
+		D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+		ZERO_MEMORY(dsvDesc);
+		dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		//dsvDesc.Texture2D.MipSlice
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		ZERO_MEMORY(srvDesc);
+		srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+
+		ASSERT_HR(Platform::GPU::Device()->CreateDepthStencilView(texture.Texture.Get(), &dsvDesc, texture.DSV.GetAddressOf()));
+		ASSERT_HR(Platform::GPU::Device()->CreateShaderResourceView(texture.Texture.Get(), &srvDesc, texture.SRV.GetAddressOf()));
+
+		ID textureID = m_IDCounter++;
+		m_depthTextures[textureID] = std::make_shared<DepthTexture>(texture);
 
 		return textureID;
 	}
@@ -576,6 +730,16 @@ namespace Resource
 		return programID;
 	}
 
+	std::shared_ptr<Window> ResourceManager::GetWindowInternal(ID windowID)
+	{
+		if (m_windows.count(windowID) == 0)
+		{
+			return std::shared_ptr<Window>();
+		}
+
+		return m_windows[windowID];
+	}
+
 	std::shared_ptr<const VertexBuffer> ResourceManager::GetVertexBufferInternal(ID bufferID)
 	{
 		if (m_vertexBuffers.count(bufferID) == 0)
@@ -610,6 +774,15 @@ namespace Resource
 			return std::shared_ptr<const Texture2D>();
 		}
 		return m_textures[textureID];
+	}
+
+	std::shared_ptr<const DepthTexture> ResourceManager::GetDepthTextureInternal(ID textureID)
+	{
+		if (m_depthTextures.count(textureID) == 0)
+		{
+			return std::shared_ptr<const DepthTexture>();
+		}
+		return m_depthTextures[textureID];
 	}
 
 	std::shared_ptr<const Sampler> ResourceManager::GetSamplerInternal(ID samplerID)
