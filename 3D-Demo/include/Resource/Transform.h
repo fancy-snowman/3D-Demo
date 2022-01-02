@@ -38,7 +38,7 @@ namespace Resource
 			DirectX::XMMATRIX xmScale = DirectX::XMMatrixScalingFromVector(
 				DirectX::XMLoadFloat3(&Scale));
 			DirectX::XMFLOAT4X4 transform;
-			DirectX::XMStoreFloat4x4(&transform, DirectX::XMMatrixTranspose(xmTranslation * xmScale * xmRotation));
+			DirectX::XMStoreFloat4x4(&transform, DirectX::XMMatrixTranspose(xmScale * xmRotation * xmTranslation));
 			return transform;
 		}
 

@@ -43,7 +43,9 @@ void Scene::Setup()
 		Component::CameraControllerFPS cameraController;
 
 		Component::TransformComponent cameraTransform;
-		cameraTransform.Position = { 0.f, 50.f, 1.0f };
+		//cameraTransform.Position = { 0.f, 50.f, 1.0f };
+		cameraTransform.Position = { 0.f, 0.f, 10.0f };
+		cameraTransform.Rotation = { 0.f, 3.1415f, 0.0 };
 
 		m_mainCamera = m_registry->create();
 		m_registry->emplace<Component::CameraComponent>(m_mainCamera, cameraSettings);
@@ -55,16 +57,46 @@ void Scene::Setup()
 		// Setup scene object
 
 		Component::MeshComponent objectMesh;
-		//objectMesh.MeshID = Resource::Manager::LoadModel("models/mandalorian.obj");
-		objectMesh.MeshID = Resource::Manager::LoadModel("models/sponza/sponza.obj");
-
 		Component::TransformComponent objectTransform;
-		//objectTransform.Scale = { 15.f, 15.f, 15.f };
+
+		ID meshID = Resource::Manager::LoadModel("models/sponza/sponza.obj");
 		objectTransform.Scale = { 0.5f, 0.5f, 0.5f };
 
-		entt::entity object = m_registry->create();
-		m_registry->emplace<Component::MeshComponent>(object, objectMesh);
-		m_registry->emplace<Component::TransformComponent>(object, objectTransform);
+
+		//ID meshID = Resource::Manager::LoadModel("models/mandalorian.obj");
+		//objectTransform.Scale = { 15.f, 15.f, 15.f };
+
+
+		if (true)
+		{
+			objectMesh.MeshID = meshID;
+
+			entt::entity object = m_registry->create();
+			m_registry->emplace<Component::MeshComponent>(object, objectMesh);
+			m_registry->emplace<Component::TransformComponent>(object, objectTransform);
+		}
+		else
+		{
+			for (float x = -10.f; x <= 10.f; x+=5)
+			{
+				for (float y = -10.f; y <= 10.f; y+=5)
+				{
+					for (float z = -10.f; z <= 10.f; z+=5)
+					{
+						objectMesh.MeshID = meshID;
+						objectTransform.Position.x = x;
+						objectTransform.Position.y = y;
+						objectTransform.Position.z = z;
+
+						entt::entity object = m_registry->create();
+						m_registry->emplace<Component::MeshComponent>(object, objectMesh);
+						m_registry->emplace<Component::TransformComponent>(object, objectTransform);
+					}
+				}
+			}
+		}
+
+		std::cout << m_registry->size<Component::MeshComponent>() << " objects initialized." << std::endl;
 	}
 }
 
@@ -147,31 +179,13 @@ void Scene::Draw()
 	{
 		Component::TransformComponent& transformComp = m_registry->get<Component::TransformComponent>(m_mainCamera);
 		Component::CameraComponent& camera = m_registry->get<Component::CameraComponent>(m_mainCamera);
-
-		Resource::Transform transform;
-		transform.Position = transformComp.Position;
-		transform.Rotation = transformComp.Rotation;
-		transform.Scale = transformComp.Scale;
-
-		Graphics::Renderer::BeginFrame(camera, transform);
+		Graphics::Renderer::BeginFrame(camera, transformComp);
 	}
 
 	auto view = m_registry->view<Component::MeshComponent, Component::TransformComponent>();
 
 	view.each([&](auto entity, const auto& meshComp, const auto& transformComp) {
-		auto mesh = Resource::Manager::GetMesh(meshComp.MeshID);
-
-		for (auto& sm : mesh->Submeshes)
-		{
-			auto material = Resource::Manager::GetMaterial(sm.Material);
-
-			Resource::Transform transform;
-			transform.Position = transformComp.Position;
-			transform.Rotation = transformComp.Rotation;
-			transform.Scale = transformComp.Scale;
-
-			Graphics::Renderer::Submit(meshComp.MeshID, sm.IndexOffset, sm.IndexCount, *material.get(), transform);
-		}
+		Graphics::Renderer::Submit(meshComp.MeshID, transformComp);
 	});
 
 	Graphics::Renderer::EndFrame();

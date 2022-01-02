@@ -3,19 +3,21 @@
 
 #include "ShaderLib.hlsli"
 
-PixelInput VS_main(VertexInput input)
+PixelInput VS_main(VertexInput input, uint instanceID : SV_InstanceID)
 {
 	PixelInput output;
 
+	InstanceData instance = InstanceBuffer[instanceID];
+
 	float4 position = float4(input.Position, 1.0f);
-	position = mul(position, Object.WorldMatrix);
+	position = mul(position, instance.WorldMatrix);
 	output.Position = position;
 	position = mul(position, Camera.ViewMatrix);
 	position = mul(position, Camera.ProjectionMatrix);
 	output.NDC = position;
 
 	float4 normal = float4(input.Normal, 0.0f);
-	normal = mul(normal, Object.WorldMatrix);
+	normal = mul(normal, instance.WorldMatrix);
 	output.Normal = normalize(normal.xyz);
 
 	output.Texcoord = input.Texcoord;
@@ -25,6 +27,10 @@ PixelInput VS_main(VertexInput input)
 
 PixelOutput PS_main(PixelInput input)
 {
+	PixelOutput output;
+	//output.Color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+	//return output;
+
 	struct LightGeneral
 	{
 		float3 Ambient;
@@ -38,8 +44,6 @@ PixelOutput PS_main(PixelInput input)
 	} lightSpecific;
 	lightSpecific.Diffuse = float3(0.6f, 0.6f, 0.6f);
 	lightSpecific.Specular = float3(0.8f, 0.8f, 0.8f);
-
-	PixelOutput output;
 
 	float3 lightDir = normalize(Light.Position - input.Position);
 	float3 lightReflect = normalize(reflect(lightDir * -1.0f, input.Normal));

@@ -25,10 +25,12 @@ namespace Graphics
 		void ClearRenderTarget(ID textureID, std::array<float, 4> clearColor);
 		void ClearDepthStencil(ID textureID, bool clearDepth = true, bool clearStencil = true, float depthValue = 1.0f, UINT stencilValue = 0);
 
+		void UpdateBufferArray(ID bufferID, const void* data, size_t size, size_t offset = 0);
 		void UpdateConstantBuffer(ID bufferID, const void* data, size_t size, size_t offset = 0);
 
 		void BindVertexBuffer(ID bufferID, UINT slot = 0, UINT offset = 0);
 		void BindIndexBuffer(ID bufferID, UINT offset = 0);
+		void BindBufferArray(ID bufferID, UINT stages, UINT slot);
 		void BindConstantBuffer(ID bufferID, UINT stages, UINT slot);
 		void BindRenderTarget(ID textureID, UINT slot, ID depthTextureID);
 		void BindShaderResource(ID textureID, UINT stages, UINT slot);
@@ -36,6 +38,7 @@ namespace Graphics
 		void BindShaderProgram(ID programID);
 		void BindViewPort(const D3D11_VIEWPORT& viewPort);
 
-		void DrawIndexed(UINT indexCount, UINT indexOffset, UINT baseVertexLocation);
+		void DrawIndexed(UINT indexCount, UINT indexOffset, UINT baseVertexLocation = 0);
+		void DrawIndexedInstanced(UINT indexCount, UINT indexOffset, UINT instanceCount, UINT instanceOffset = 0, UINT baseVertexLocation = 0);
 	};
 }

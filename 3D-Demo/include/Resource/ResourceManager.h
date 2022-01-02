@@ -95,6 +95,12 @@ namespace Resource
 			return s_instance->CreateIndexBufferInternal(indexCount, format, initialData);
 		}
 
+		static inline ID CreateBufferArray(size_t maxElementCount, size_t elementStride, const void* initData = nullptr)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->CreateBufferArrayInternal(maxElementCount, elementStride, initData);
+		}
+
 		static inline ID CreateConstantBuffer(size_t size, const void* initialData = nullptr)
 		{
 			if (!s_instance) { Initialize(); }
@@ -141,6 +147,12 @@ namespace Resource
 		{
 			if (!s_instance) { Initialize(); }
 			return s_instance->GetIndexBufferInternal(bufferID);
+		}
+
+		static inline std::shared_ptr<const BufferArray> GetBufferArray(ID bufferID)
+		{
+			if (!s_instance) { Initialize(); }
+			return s_instance->GetBufferArrayInternal(bufferID);
 		}
 
 		static inline std::shared_ptr<const ConstantBuffer> GetConstantBuffer(ID bufferID)
@@ -201,6 +213,7 @@ namespace Resource
 
 		std::unordered_map<ID, std::shared_ptr<VertexBuffer>> m_vertexBuffers;
 		std::unordered_map<ID, std::shared_ptr<IndexBuffer>> m_indexBuffers;
+		std::unordered_map<ID, std::shared_ptr<BufferArray>> m_bufferArrays;
 		std::unordered_map<ID, std::shared_ptr<ConstantBuffer>> m_constantBuffers;
 		std::unordered_map<ID, std::shared_ptr<Texture2D>> m_textures;
 		std::unordered_map<ID, std::shared_ptr<DepthTexture>> m_depthTextures;
@@ -240,6 +253,7 @@ namespace Resource
 		
 		ID CreateVertexBufferInternal(size_t vertexStride, UINT vertexCount, D3D11_PRIMITIVE_TOPOLOGY topology, const void* initialData);
 		ID CreateIndexBufferInternal(size_t indexCount, DXGI_FORMAT format, const void* initialData);
+		ID CreateBufferArrayInternal(size_t maxElementCount, size_t elementStride, const void* initData);
 		ID CreateConstantBufferInternal(size_t size, const void* initData);
 		ID CreateTexture2DInternal(UINT width, UINT height, DXGI_FORMAT format, UINT texelStride, const void* initData);
 		ID CreateDepthTextureInternal(UINT width, UINT height, const void* initData);
@@ -249,6 +263,7 @@ namespace Resource
 		std::shared_ptr<Window> GetWindowInternal(ID windowID);
 		std::shared_ptr<const VertexBuffer> GetVertexBufferInternal(ID bufferID);
 		std::shared_ptr<const IndexBuffer> GetIndexBufferInternal(ID bufferID);
+		std::shared_ptr<const BufferArray> GetBufferArrayInternal(ID bufferID);
 		std::shared_ptr<const ConstantBuffer> GetConstantBufferInternal(ID bufferID);
 		std::shared_ptr<const Texture2D> GetTexture2DInternal(ID textureID);
 		std::shared_ptr<const DepthTexture> GetDepthTextureInternal(ID textureID);

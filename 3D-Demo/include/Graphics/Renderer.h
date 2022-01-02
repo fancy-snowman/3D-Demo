@@ -40,6 +40,12 @@ namespace Graphics
 			s_instance->SubmitInternal(meshID, indexOffset, indexCount, material, transform);
 		}
 
+		static inline void Submit(ID meshID, const Resource::Transform& transform)
+		{
+			if (!s_instance) { Initialize(); }
+			s_instance->SubmitInternal(meshID, transform);
+		}
+
 		static inline void EndFrame()
 		{
 			if (!s_instance) { Initialize(); }
@@ -81,6 +87,15 @@ namespace Graphics
 
 		void BeginFrameInternal(const Resource::Camera& camera, const Resource::Transform& cameraTransform);
 		void SubmitInternal(ID meshID, UINT indexOffset, UINT indexCount, const Resource::Material& material, const Resource::Transform& transform);
+		void SubmitInternal(ID meshID, const Resource::Transform& transform);
 		void EndFrameInternal();
+
+	private:
+
+		// <meshID, instanceData>
+
+		ID m_instanceBufferID;
+		
+		std::map<ID, std::vector<Resource::ObjectBufferData>> m_instanceBufferData;
 	};
 }

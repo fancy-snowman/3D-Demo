@@ -37,6 +37,23 @@ void Graphics::CommandBuffer::ClearDepthStencil(ID textureID, bool clearDepth, b
 	}
 }
 
+void Graphics::CommandBuffer::UpdateBufferArray(ID bufferID, const void* data, size_t size, size_t offset)
+{
+	auto buffer = Manager::GetBufferArray(bufferID);
+	if (buffer)
+	{
+		UINT MaxAcceptedByteWidth = (buffer->MaxElementCount - offset) * buffer->ElementStride;
+
+		D3D11_MAPPED_SUBRESOURCE mappedData;
+		if (SUCCEEDED(GPU::Context()->Map(buffer->Buffer.Get(), NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedData)))
+		{
+			size = (size <= MaxAcceptedByteWidth) ? size : MaxAcceptedByteWidth;
+			memcpy(mappedData.pData, data, size);
+			Platform::GPU::Context()->Unmap(buffer->Buffer.Get(), NULL);
+		}
+	}
+}
+
 void Graphics::CommandBuffer::UpdateConstantBuffer(ID bufferID, const void* data, size_t size, size_t offset)
 {
 	auto buffer = Manager::GetConstantBuffer(bufferID);
@@ -68,6 +85,25 @@ void Graphics::CommandBuffer::BindIndexBuffer(ID bufferID, UINT offset)
 	if (buffer)
 	{
 		GPU::Context()->IASetIndexBuffer(buffer->Buffer.Get(), buffer->Format, offset);
+	}
+}
+
+void Graphics::CommandBuffer::BindBufferArray(ID bufferID, UINT stages, UINT slot)
+{
+	auto buffer = Manager::GetBufferArray(bufferID);
+
+	if (buffer)
+	{
+		if (stages & SHADER_STAGE_VERTEX)
+			Platform::GPU::Context()->VSSetShaderResources(slot, 1, buffer->SRV.GetAddressOf());
+		if (stages & SHADER_STAGE_HULL)
+			Platform::GPU::Context()->HSSetShaderResources(slot, 1, buffer->SRV.GetAddressOf());
+		if (stages & SHADER_STAGE_DOMAIN)
+			Platform::GPU::Context()->DSSetShaderResources(slot, 1, buffer->SRV.GetAddressOf());
+		if (stages & SHADER_STAGE_GEOMETRY)
+			Platform::GPU::Context()->GSSetShaderResources(slot, 1, buffer->SRV.GetAddressOf());
+		if (stages & SHADER_STAGE_PIXEL)
+			Platform::GPU::Context()->PSSetShaderResources(slot, 1, buffer->SRV.GetAddressOf());
 	}
 }
 
@@ -166,4 +202,9 @@ void Graphics::CommandBuffer::BindViewPort(const D3D11_VIEWPORT& viewPort)
 void Graphics::CommandBuffer::DrawIndexed(UINT indexCount, UINT indexOffset, UINT baseVertexLocation)
 {
 	GPU::Context()->DrawIndexed(indexCount, indexOffset, baseVertexLocation);
+}
+
+void Graphics::CommandBuffer::DrawIndexedInstanced(UINT indexCount, UINT indexOffset, UINT instanceCount, UINT instanceOffset, UINT baseVertexLocation)
+{
+	GPU::Context()->DrawIndexedInstanced(indexCount, instanceCount, indexOffset, baseVertexLocation, instanceOffset);
 }

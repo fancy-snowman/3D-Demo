@@ -94,7 +94,13 @@ cbuffer LightBuffer : register (b3)
 * -----------------------------------------------------------------------------
 */
 
-Texture2D<float4> MaterialDiffuseMap : register (t0);
+struct InstanceData
+{
+	float4x4 WorldMatrix;
+};
+StructuredBuffer<InstanceData> InstanceBuffer : register (t0); // Vertex
+
+Texture2D<float4> MaterialDiffuseMap : register (t0); // Pixel
 
 /**
 * -----------------------------------------------------------------------------

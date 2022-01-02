@@ -32,6 +32,7 @@ namespace Graphics
 
 		m_defaultShader = Resource::Manager::CreateShaderProgram("assets/shaders/DefaultShaderProgram.hlsl");
 
+		m_instanceBufferID = Resource::Manager::CreateBufferArray(10000, sizeof(Resource::ObjectBufferData));
 
 		// Temp
 
@@ -87,7 +88,7 @@ namespace Graphics
 			m_commandBuffer.BindConstantBuffer(m_lightBuffer, SHADER_STAGE_PIXEL, 3);
 
 			// Move to EndFrameInternal
-			m_commandBuffer.BindShaderProgram(m_defaultShader);
+			//m_commandBuffer.BindShaderProgram(m_defaultShader);
 		}
 	}
 
@@ -112,8 +113,57 @@ namespace Graphics
 		m_commandBuffer.DrawIndexed(indexCount, indexOffset, 0);
 	}
 
+	void Renderer::SubmitInternal(ID meshID, const Resource::Transform& transform)
+	{
+		Resource::ObjectBufferData data;
+		data.World = transform.GetMatrixTransposed();
+		m_instanceBufferData[meshID].push_back(data);
+	}
+
 	void Renderer::EndFrameInternal()
 	{
-		//m_commandBuffer.BindShaderProgram(m_defaultShader);
+		int drawCalls = 0;
+		int instanceCount = 0;
+		int triangleCount = 0;
+
+		m_commandBuffer.BindShaderProgram(m_defaultShader);
+
+		for (auto& job : m_instanceBufferData)
+		{
+			ID meshID = job.first;
+			auto& instances = job.second;
+
+			instanceCount = instances.size();
+
+			auto mesh = Resource::Manager::GetMesh(meshID);
+			m_commandBuffer.BindVertexBuffer(mesh->VertexBuffer);
+			m_commandBuffer.BindIndexBuffer(mesh->IndexBuffer);
+
+			size_t instanceBufferSize = instances.size() * sizeof(Resource::ObjectBufferData);
+			m_commandBuffer.UpdateBufferArray(m_instanceBufferID, instances.data(), instanceBufferSize);
+			m_commandBuffer.BindBufferArray(m_instanceBufferID, SHADER_STAGE_VERTEX, 0);
+
+			for (auto& sm : mesh->Submeshes)
+			{
+				auto material = Resource::Manager::GetMaterial(sm.Material);
+
+				m_commandBuffer.UpdateConstantBuffer(m_materialBuffer, &material->Data, sizeof(material->Data));
+				m_commandBuffer.BindConstantBuffer(m_materialBuffer, SHADER_STAGE_PIXEL, 1);
+
+				if (material->DiffuseMap)
+				{
+					m_commandBuffer.BindShaderResource(material->DiffuseMap, SHADER_STAGE_PIXEL, 0);
+				}
+
+				m_commandBuffer.DrawIndexedInstanced(sm.IndexCount, sm.IndexOffset, instances.size());
+
+				drawCalls++;
+				triangleCount += (sm.IndexCount / 3.f) * instanceCount;
+			}
+		}
+
+		m_instanceBufferData.clear();
+
+		std::cout << "Draw calls: " << drawCalls << "\tInstances: " << instanceCount << "\tTriangle count: " << triangleCount << std::endl;
 	}
 }

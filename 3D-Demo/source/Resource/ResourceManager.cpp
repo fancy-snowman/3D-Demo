@@ -568,6 +568,56 @@ namespace Resource
 		return meshID;
 	}
 
+	ID ResourceManager::CreateBufferArrayInternal(size_t maxElementCount, size_t elementStride, const void* initData)
+	{
+		BufferArray buffer;
+
+		// Elements MUST be 16-bytes aligned
+		assert(elementStride % 16 == 0);
+
+		buffer.MaxElementCount = maxElementCount;
+		buffer.ElementStride = elementStride;
+
+		{
+			D3D11_BUFFER_DESC bufferDesc;
+			ZERO_MEMORY(bufferDesc);
+			bufferDesc.ByteWidth = maxElementCount * elementStride;
+			bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+			bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+			bufferDesc.StructureByteStride = elementStride;
+
+			if (initData)
+			{
+				D3D11_SUBRESOURCE_DATA data;
+				ZERO_MEMORY(data);
+				data.pSysMem = initData;
+				ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&bufferDesc, &data, buffer.Buffer.GetAddressOf()));
+			}
+			else
+			{
+				ASSERT_HR(Platform::GPU::Device()->CreateBuffer(&bufferDesc, NULL, buffer.Buffer.GetAddressOf()));
+			}
+		}
+
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+			ZERO_MEMORY(srvDesc);
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+			srvDesc.Buffer.FirstElement = 0;
+			srvDesc.Buffer.NumElements = maxElementCount;
+
+			ASSERT_HR(Platform::GPU::Device()->CreateShaderResourceView(buffer.Buffer.Get(), &srvDesc, buffer.SRV.GetAddressOf()));
+		}
+
+		ID bufferID = m_IDCounter++;
+		m_bufferArrays[bufferID] = std::make_shared<BufferArray>(buffer);
+
+		return bufferID;
+	}
+
 	ID ResourceManager::CreateConstantBufferInternal(size_t size, const void* initData)
 	{
 		ConstantBuffer buffer;
@@ -793,6 +843,15 @@ namespace Resource
 			return std::shared_ptr<const IndexBuffer>();
 		}
 		return m_indexBuffers[bufferID];
+	}
+
+	std::shared_ptr<const BufferArray> ResourceManager::GetBufferArrayInternal(ID bufferID)
+	{
+		if (m_bufferArrays.count(bufferID) == 0)
+		{
+			return std::shared_ptr<const BufferArray>();
+		}
+		return m_bufferArrays[bufferID];
 	}
 
 	std::shared_ptr<const ConstantBuffer> ResourceManager::GetConstantBufferInternal(ID bufferID)

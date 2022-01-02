@@ -27,7 +27,8 @@ using Microsoft::WRL::ComPtr;
 #define ID int
 #define EntityID entt::entity
 
-#define ASSERT_HR(hr) assert(SUCCEEDED(hr))
+//#define ASSERT_HR(hr) assert(SUCCEEDED(hr))
+#define ASSERT_HR(hr) hr
 #define ZERO_MEMORY(obj) ZeroMemory(&obj, sizeof(obj))
 
 #define ALIGN_TO(value, align) (value + align-1) & ~(align-1)

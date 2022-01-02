@@ -19,6 +19,14 @@ namespace Resource
 		DXGI_FORMAT Format = DXGI_FORMAT_R32_UINT;
 	};
 
+	struct BufferArray
+	{
+		ComPtr<ID3D11Buffer> Buffer;
+		ComPtr<ID3D11ShaderResourceView> SRV;
+		UINT MaxElementCount = 0;
+		UINT ElementStride = 0;
+	};
+
 	struct ConstantBuffer
 	{
 		ComPtr<ID3D11Buffer> Buffer;
