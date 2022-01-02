@@ -34,12 +34,6 @@ namespace Graphics
 			s_instance->BeginFrameInternal(camera, cameraTransform);
 		}
 
-		static inline void Submit(ID meshID, UINT indexOffset, UINT indexCount, const Resource::Material& material, const Resource::Transform& transform)
-		{
-			if (!s_instance) { Initialize(); }
-			s_instance->SubmitInternal(meshID, indexOffset, indexCount, material, transform);
-		}
-
 		static inline void Submit(ID meshID, const Resource::Transform& transform)
 		{
 			if (!s_instance) { Initialize(); }
@@ -86,7 +80,6 @@ namespace Graphics
 	private:
 
 		void BeginFrameInternal(const Resource::Camera& camera, const Resource::Transform& cameraTransform);
-		void SubmitInternal(ID meshID, UINT indexOffset, UINT indexCount, const Resource::Material& material, const Resource::Transform& transform);
 		void SubmitInternal(ID meshID, const Resource::Transform& transform);
 		void EndFrameInternal();
 

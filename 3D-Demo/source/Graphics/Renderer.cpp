@@ -86,31 +86,7 @@ namespace Graphics
 			// Temp
 			m_commandBuffer.UpdateConstantBuffer(m_lightBuffer, &m_pointLight, sizeof(m_pointLight));
 			m_commandBuffer.BindConstantBuffer(m_lightBuffer, SHADER_STAGE_PIXEL, 3);
-
-			// Move to EndFrameInternal
-			//m_commandBuffer.BindShaderProgram(m_defaultShader);
 		}
-	}
-
-	void Renderer::SubmitInternal(ID meshID, UINT indexOffset, UINT indexCount, const Resource::Material& material, const Resource::Transform& transform)
-	{
-		auto mesh = Resource::Manager::GetMesh(meshID);
-		m_commandBuffer.BindVertexBuffer(mesh->VertexBuffer);
-		m_commandBuffer.BindIndexBuffer(mesh->IndexBuffer);
-
-		DirectX::XMFLOAT4X4 worldMatrix = transform.GetMatrixTransposed();
-		m_commandBuffer.UpdateConstantBuffer(m_objectBuffer, &worldMatrix, sizeof(worldMatrix));
-		m_commandBuffer.BindConstantBuffer(m_objectBuffer, SHADER_STAGE_VERTEX, 0);
-
-		m_commandBuffer.UpdateConstantBuffer(m_materialBuffer, &material.Data, sizeof(material.Data));
-		m_commandBuffer.BindConstantBuffer(m_materialBuffer, SHADER_STAGE_PIXEL, 1);
-
-		if (material.DiffuseMap)
-		{
-			m_commandBuffer.BindShaderResource(material.DiffuseMap, SHADER_STAGE_PIXEL, 0);
-		}
-
-		m_commandBuffer.DrawIndexed(indexCount, indexOffset, 0);
 	}
 
 	void Renderer::SubmitInternal(ID meshID, const Resource::Transform& transform)
