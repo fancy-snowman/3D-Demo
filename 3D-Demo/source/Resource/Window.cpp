@@ -1,14 +1,10 @@
 #include "pch.h"
 #include "Platform/GPU.h"
 #include "Resource/Window.h"
+#include "Resource/ResourceManager.h"
 
 namespace Resource
 {
-	Window::~Window()
-	{
-		DestroyWindow(NativeWindow);
-	}
-
 	UINT Window::GetWidth() const
 	{
 		RECT rect;
@@ -51,5 +47,42 @@ namespace Resource
 	void Window::Present()
 	{
 		SwapChain->Present(0, 0);
+	}
+
+	void Window::SetWindowState(HWND hwnd, WindowState state)
+	{
+		if (hwnd)
+		{
+			Resource::WindowInstanceData* windowInstanceData = (Resource::WindowInstanceData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+			if (windowInstanceData)
+			{
+				auto window = Manager::GetWindow(windowInstanceData->WindowID);
+				window->State = Resource::WindowState::Destroyed;
+			}
+		}		
+	}
+
+	void Window::SetWindowTitle(HWND hwnd, const std::string& title)
+	{
+		if (hwnd)
+		{
+			SetWindowText(hwnd, title.c_str());
+		}
+	}
+
+	bool Window::CustomProcedure(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		if (hwnd)
+		{
+			Resource::WindowInstanceData* windowInstanceData = (Resource::WindowInstanceData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
+			if (windowInstanceData && windowInstanceData->CustomProcedure)
+			{
+				return windowInstanceData->CustomProcedure(hwnd, uMsg, wParam, lParam);
+			}
+		}
+
+		return false;
 	}
 }

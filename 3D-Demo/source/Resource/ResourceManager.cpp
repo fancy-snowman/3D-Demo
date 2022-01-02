@@ -392,6 +392,9 @@ namespace Resource
 
 		const std::string CLASS_NAME = "WINDOW_CLASS" + std::to_string(m_IDCounter);
 
+		ID windowID = m_IDCounter++;
+		m_windows[windowID] = window;
+
 		{ // Register window class
 			WNDCLASS WindowClass = {};
 
@@ -405,7 +408,36 @@ namespace Resource
 					switch (uMsg)
 					{
 					case WM_DESTROY: // Window x-button is pressed
+					{
+						Resource::Window::SetWindowState(hwnd, WindowState::Destroyed);
 						PostQuitMessage(0);
+						return 0;
+					}
+
+					case WM_SETFOCUS:
+					{
+						Resource::Window::SetWindowState(hwnd, WindowState::Focused);
+						return 0;
+					}
+
+					case WM_KILLFOCUS:
+					{
+						Resource::Window::SetWindowState(hwnd, WindowState::Unfocused);
+						return 0;
+					}
+
+					case WM_SIZE:
+					{
+						if (wParam == SIZE_MINIMIZED)
+						{
+							Resource::Window::SetWindowState(hwnd, WindowState::Minimized);
+							return 0;
+						}
+					}
+					}
+
+					if (Resource::Window::CustomProcedure(hwnd, uMsg, wParam, lParam))
+					{
 						return 0;
 					}
 
@@ -416,6 +448,8 @@ namespace Resource
 
 			WindowClass.hInstance = nullptr;
 			WindowClass.lpszClassName = CLASS_NAME.c_str();
+			WindowClass.cbWndExtra = sizeof(Resource::WindowInstanceData);
+
 			RegisterClass(&WindowClass);
 		}
 
@@ -433,6 +467,13 @@ namespace Resource
 				NULL
 			);
 			assert(window->NativeWindow);
+
+			Resource::WindowInstanceData* windowData = new Resource::WindowInstanceData;
+			windowData->WindowID = windowID;
+			windowData->CustomProcedure = windowProc;
+
+			SetWindowLongPtr(window->NativeWindow, GWLP_USERDATA, (LONG_PTR)windowData);
+
 			ShowWindow(window->NativeWindow, SW_SHOW);
 		}
 
@@ -474,10 +515,6 @@ namespace Resource
 			window->TextureID = m_IDCounter++;
 			m_textures[window->TextureID] = std::make_shared<Resource::Texture2D>(windowTexture);
 		}
-
-
-		ID windowID = m_IDCounter++;
-		m_windows[windowID] = window;
 
 		return windowID;
 	}
