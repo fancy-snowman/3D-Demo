@@ -17,7 +17,7 @@ Scene::~Scene()
 
 void Scene::Setup()
 {
-	ID windowID = Resource::Manager::CreateAppWindow(800, 600, "THIS IS WINDOW");
+	ID windowID = Resource::Manager::CreateAppWindow(1200, 1200, "3D Demo");
 	auto window = Resource::Manager::GetWindow(windowID);
 
 	RECT rect;

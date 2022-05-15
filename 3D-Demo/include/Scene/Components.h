@@ -26,8 +26,8 @@ namespace Component
 		bool MoveUpYAxis = true;
 
 		float Speed = 10.f;
-		float TurnSpeedHorizontal = 1.f / (3.14159f * 2.f);
-		float TurnSpeedVertical = 1.f / (3.14159f * 2.f);
+		float TurnSpeedHorizontal = 1.f / (3.14159f * 2.f) * 0.1f;
+		float TurnSpeedVertical = 1.f / (3.14159f * 2.f) * 0.1f;
 	};
 
 	struct CameraComponent : public Resource::Camera
